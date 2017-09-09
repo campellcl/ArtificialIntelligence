@@ -71,6 +71,78 @@ class BlindAgent:
                   % (self.location[0], self.location[1]))
 
 
+class ReflexAgent:
+    environment = None
+    location = (None, None)
+    performance_score = None
+
+    def __init__(self, environment, location):
+        self.environment = environment
+        self.location = location
+        self.performance_score = 0
+
+    def move_direction(self):
+        # Move using the current percepts only.
+        # Count the number of moveable squares in each direction:
+        valid_agent_moves = {Actions.MOVE_UP: 0, Actions.MOVE_RIGHT: 0,
+                             Actions.MOVE_DOWN: 0, Actions.MOVE_LEFT: 0}
+
+        initial_location = self.location
+        while self.environment.is_valid_action(action=Actions.MOVE_UP, location=initial_location):
+            valid_agent_moves[Actions.MOVE_UP] += 1
+            initial_location = (initial_location[0] - 1, initial_location[1])
+
+        initial_location = self.location
+        while self.environment.is_valid_action(action=Actions.MOVE_RIGHT, location=initial_location):
+            valid_agent_moves[Actions.MOVE_RIGHT] += 1
+            initial_location = (initial_location[0], initial_location[1] + 1)
+
+        initial_location = self.location
+        while self.environment.is_valid_action(action=Actions.MOVE_LEFT, location=initial_location):
+            valid_agent_moves[Actions.MOVE_LEFT] += 1
+            initial_location = (initial_location[0], initial_location[1] - 1)
+
+        initial_location = self.location
+        while self.environment.is_valid_action(action=Actions.MOVE_DOWN, location=initial_location):
+            valid_agent_moves[Actions.MOVE_DOWN] += 1
+            initial_location = (initial_location[0] + 1, initial_location[1])
+
+        most_possible_moves = 0
+        desired_move = None
+        for action, num_moves in valid_agent_moves.items():
+            if num_moves > most_possible_moves:
+                most_possible_moves = num_moves
+                desired_move = action
+        return desired_move
+
+    def move_up(self):
+        if self.environment.is_valid_action(action=Actions.MOVE_UP, location=self.location):
+            self.location = (self.location[0]-1, self.location[1])
+        self.performance_score -= 1
+
+    def move_right(self):
+        if self.environment.is_valid_action(action=Actions.MOVE_RIGHT, location=self.location):
+            self.location = (self.location[0], self.location[1] + 1)
+        self.performance_score -= 1
+
+    def move_down(self):
+        if self.environment.is_valid_action(action=Actions.MOVE_DOWN, location=self.location):
+            self.location = (self.location[0] + 1, self.location[1])
+        self.performance_score -= 1
+
+    def move_left(self):
+        if self.environment.is_valid_action(action=Actions.MOVE_LEFT, location=self.location):
+            self.location = (self.location[0], self.location[1] - 1)
+        self.performance_score -= 1
+
+    def suck(self):
+        if self.environment.is_dirty(location=self.location):
+            self.environment.make_clean(location=self.location)
+            print("ReflexAgent-suck: The agent succeeded in cleaning (%d, %d)." % (self.location[0], self.location[1]))
+            self.performance_score += 100
+        else:
+            print("ReflexAgent-suck: Location (%d, %d) was already clean, no reward."
+                  % (self.location[0], self.location[1]))
 
 class VacuumWorld:
     world = None
@@ -202,6 +274,8 @@ def get_random_agent_position(world):
 
 
 def run_simulation(environment, agent, step_count):
+    print("Running Simulation with Agent: %s" % type(agent))
+    agent.performance_score = 0
     # Main control loop:
     for i in range(step_count):
         if environment.is_dirty(location=agent.location):
@@ -210,9 +284,13 @@ def run_simulation(environment, agent, step_count):
             agent.suck()
             print("Main-CTRL: The agent's performance score is now: %d." % agent.performance_score)
         else:
-            # Move in a random direction:
-            rand_int = np.random.randint(low=0, high=4)
-            direction = Actions(rand_int)
+            if type(agent) is BlindAgent:
+                # Move in a random direction:
+                rand_int = np.random.randint(low=0, high=4)
+                direction = Actions(rand_int)
+            elif type(agent) is ReflexAgent:
+                # Move in a deliberate direction.
+                direction = agent.move_direction()
             if direction == Actions.MOVE_LEFT:
                 print("Main-CTRL: The agent is attempting to move LEFT.")
                 agent.move_left()
@@ -228,8 +306,8 @@ def run_simulation(environment, agent, step_count):
             else:
                 print("main: Control Loop directed agent to move randomly in an unsupported way (action not possible).")
             print("Main-CTRL: The agent's performance score is now: %d." % agent.performance_score)
-    print("Main: Simulation finished for step-count: %d. Agent performance: %d." \
-          % (step_count, agent.performance_score))
+    print("Main: Simulation finished for step-count: %d. Agent %s's performance: %d." \
+          % (step_count, type(agent), agent.performance_score))
     return agent.performance_score
 
 def main(environment_type, agent_type, num_repeats, step_count):
@@ -252,7 +330,8 @@ def main(environment_type, agent_type, num_repeats, step_count):
     # Perform the experiment 'num_repeats' times:
     previous_location = False
     seed_location = None
-    performance_scores = []
+    performance_scores_blind = []
+    performance_scores_reflex = []
     for i in range(num_repeats):
         # Initialize the environment (re-randomize dirt)
         environment = VacuumWorld(world=world)
@@ -261,18 +340,32 @@ def main(environment_type, agent_type, num_repeats, step_count):
             blind_roomba = BlindAgent(environment=environment, location=seed_location)
         else:
             blind_roomba = BlindAgent(environment=environment, location=None)
+            reflex_roomba = ReflexAgent(environment=deepcopy(environment), location=blind_roomba.location)
             seed_location = blind_roomba.location
             previous_location = True
         print("Main: Initialized Agent: Blind Roomba at location (%d, %d)."
               % (blind_roomba.location[0], blind_roomba.location[1]))
-        print("Main: The location of the agent is dirty? %s" % str(environment.is_dirty(blind_roomba.location)))
-        print("Main: The agent's performance score is: %d." % blind_roomba.performance_score)
+        print("Main: Initialized Agent: Reflex Roomba at location (%d, %d)."
+              % (reflex_roomba.location[0], reflex_roomba.location[1]))
+        print("Main: The location of the agents is dirty? %s" % str(environment.is_dirty(blind_roomba.location)))
+        print("Main: Agent Blind Roomba's performance score is: %d." % blind_roomba.performance_score)
+        print("Main: Agent Reflex Roomba's performance score is: %d." % reflex_roomba.performance_score)
+        print("Main: Agent Blind Roomba's world:")
         environment.print_world(blind_roomba.location)
-        performance_score = run_simulation(environment=environment, agent=blind_roomba, step_count=step_count)
-        performance_scores.append(performance_score)
-    print("Main: Experiment Results: %s" % performance_scores)
-    print("Main: Average Performance Score (%d runs, %d steps): %.2f."
-          % (num_repeats, step_count, np.average(performance_scores)))
+        print("Main: Agent Reflex Roomba's world:")
+        reflex_roomba.environment.print_world(reflex_roomba.location)
+
+        performance_score_blind = run_simulation(environment=environment, agent=blind_roomba, step_count=step_count)
+        performance_score_reflex = run_simulation(environment=reflex_roomba.environment,
+                                                   agent=reflex_roomba, step_count=step_count)
+        performance_scores_blind.append(performance_score_blind)
+        performance_scores_reflex.append(performance_score_reflex)
+    print("Main: Experiment Results BlindAgent: %s" % performance_scores_blind)
+    print("Main: Experiment Results ReflexAgent: %s" % performance_scores_reflex)
+    print("Main: Average Performance Score BlindAgent (%d runs, %d steps): %.2f."
+          % (num_repeats, step_count, np.average(performance_scores_blind)))
+    print("Main: Average Performance Score ReflexAgent (%d runs, %d steps): %.2f."
+          % (num_repeats, step_count, np.average(performance_scores_reflex)))
 
 
 if __name__ == '__main__':
