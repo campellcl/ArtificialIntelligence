@@ -11,11 +11,25 @@ __version__ = "9/19/2017"
 
 
 class PetDetectiveProblem(Problem):
+    initial_state = None
+    goal_state = None
+    game_board = None
+    pet_house_locations = None
 
     def __init__(self, initial_state, goal_state, game_board):
         super().__init__(initial=initial_state, goal=goal_state)
         self.game_board = game_board
+        self.pet_house_locations = self.extract_pet_house_locations()
         # TODO: perform additional self.init as required.
+
+    def extract_pet_house_locations(self):
+        pet_house_locations = {}
+        for i, row in enumerate(self.game_board):
+            for j, ele in enumerate(row):
+                if ele.isalpha():
+                    if not ele.islower():
+                        pet_house_locations[ele] = (i, j)
+        return pet_house_locations
 
     def is_road(self, desired_location):
         """
@@ -91,6 +105,16 @@ class PetDetectiveProblem(Problem):
                     resultant_state['pets_in_car'].append(pet)
                     # Remove the pet from the street:
                     resultant_state['pets_in_street'].pop(pet)
+            # TODO: Double check implementation of pet dropoff.
+            # Check to see if pet dropoff is necessary:
+            if state['pets_in_car']:
+                for pet_house, house_location in self.pet_house_locations.items():
+                    if updated_location == house_location:
+                        # The agent is at a pet's house:
+                        if pet_house.lower() in state['pets_in_car']:
+                            # The pet is in the car:
+                            # Remove the pet from the car:
+                            state['pets_in_car'].remove(pet_house.lower())
             resultant_state['agent_loc'] = updated_location
             return resultant_state
 
@@ -117,3 +141,46 @@ class PetDetectiveProblem(Problem):
         :return path_cost: The cost of a solution path that arrives at state2 from state1 assuming cost 'c'.
         """
         return c
+
+    def print_world(self, game_state):
+        """
+        print_world: Prints a human-readable version of the game board to the console.
+        :return None: Upon completion; a human-readable string representation of the game state is printed to stdout.
+        """
+        # TODO: Finish this method by updating the pet locations and agent locations based on the current state.
+        if game_state['pets_in_car']:
+            # Remove pet from gameboard.
+            for pet, loc in game_state['pets_in_car'].items():
+                # Iterate through gamestate and find pet
+                self.game_board[loc[0]][loc[1]] = '*'
+                '''
+                for i, row in enumerate(self.game_board):
+                    for j, ele in enumerate(row):
+                        if self.game_board[i][j] == pet:
+                            # TODO: Observe the adjacent squares to determine if + or - or |
+                            # For now just replace with *. 
+                            self.game_board[i][j] = '*'
+                '''
+        # update agent location:
+        '''
+        for i, row in enumerate(self.game_board):
+            for j, col in enumerate(row):
+                if self.game_board[i][j] == '^':
+                    if (i, j) == game_state['agent_loc']:
+                        # The carrot is the current agent location, no update
+                        pass
+                    else:
+                        row_copy_prepend = self.game_board[i][0:j]
+                        row_copy_postpend = self.game_board[i][j+1:-1]
+                        new_row = row_copy_prepend + '$' + row_copy_postpend
+                        new_row[j] = '^'
+                        self.game_board[i] = new_row
+
+                        # self.game_board[i][j] = '$'
+                        self.game_board[game_state['agent_loc'][0]][game_state['agent_loc'][1]] = '^'
+        '''
+        world_string = ''
+        for i, row in enumerate(self.game_board):
+            world_string = world_string + row + "\n"
+        print(world_string)
+
