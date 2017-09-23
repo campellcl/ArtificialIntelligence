@@ -4,7 +4,9 @@ Implementation of Artificial Intelligence's second programming assignment.
 """
 import pandas as pd
 from queue import PriorityQueue
+from sortedcontainers import SortedList
 from prog2.PetDetectiveProblem import PetDetectiveProblem
+from prog2.Node import Node
 
 __author__ = "Chris Campell"
 __version__ = "9/19/2017"
@@ -44,18 +46,6 @@ def get_street_pet_locations(game_board):
                     pet_locations[ele] = (i, j)
     return pet_locations
 
-def print_world(game_board):
-        """
-        print_world: Prints a human-readable version of the game board to the console.
-        :param game_board: The provided string during initialization that represents the game board in array form.
-        :return None: Upon completion; a human-readable string representation of the game state is printed to stdout.
-        """
-        world_string = ''
-        for row in game_board:
-            world_string = world_string + row + "\n"
-        print(world_string)
-
-
 def get_solution_from_state(state):
     print("Supposed to get the solution now...woops!")
     pass
@@ -78,7 +68,7 @@ def get_hashable_state_representation(state):
 
 def uniform_cost_search(problem_subclass):
     # Define a node of the form: (path_cost, state)
-    node = (0, {'state': problem_subclass.initial})
+    node = Node(state=problem_subclass.initial, path_cost=0)
     frontier = PriorityQueue()
     # Add the initial node to the frontier:
     frontier.put_nowait(node)
@@ -89,21 +79,21 @@ def uniform_cost_search(problem_subclass):
             # Failure, no solution.
             return None
         node = frontier.get_nowait()
-        if problem_subclass.goal_test(node[1]['state']):
-            return get_solution_from_state(node[1]['state'])
+        if problem_subclass.goal_test(node.state):
+            return get_solution_from_state(node.state)
         # Modify the node's state to be hashable for a set:
-        hashable_state = get_hashable_state_representation(node[1]['state'])
-        explored.add(hashable_state)
-        for action in problem_subclass.actions(node[1]['state']):
-            resultant_state = problem_subclass.result(state=node[1]['state'], action=action)
-            path_cost = problem_subclass.path_cost(c=1,state1=node[1]['state'],
+        # hashable_state = node.__hash__()
+        explored.add(node)
+        for action in problem_subclass.actions(node.state):
+            resultant_state = problem_subclass.result(state=node.state, action=action)
+            path_cost = problem_subclass.path_cost(c=1,state1=node.state,
                                                               action=action,state2=resultant_state)
-            child_node = (path_cost + node[0], {'state':resultant_state, 'problem': problem_subclass,
-                                                'node': node, 'action': action})
-            if get_hashable_state_representation(child_node[1]['state']) not in explored \
-                    or get_hashable_state_representation(child_node[1]['state']) not in frontier:
+            child_node = Node(state=resultant_state, path_cost=path_cost + node.path_cost,
+                              problem=problem_subclass, node=node, action=action)
+            child_node.problem.print_world(child_node.state)
+            if child_node not in explored or child_node not in frontier:
                 frontier.put_nowait(child_node)
-            elif child_node[1]['state'] in frontier:
+            elif child_node in frontier:
                 # check to see if frontier child_node has higher path cost:
                 for node in frontier.queue:
                     if node[1]['state'] == child_node[1]['state']:
@@ -130,7 +120,7 @@ def main(training_file):
         # Define our problem to be:
         pet_detective_problem = PetDetectiveProblem(initial_state=init_state,
                                                     goal_state=desired_goal_state, game_board=game_board)
-        print_world(game_board=game_board)
+        pet_detective_problem.print_world(game_state=init_state)
         solution = uniform_cost_search(problem_subclass=pet_detective_problem)
         if solution is not None:
             # Solution found!
