@@ -81,6 +81,7 @@ def get_hashable_state_representation(state):
 
 
 def uniform_cost_search(problem_subclass):
+    num_nodes_expanded = 0
     # Define a node of the form: (path_cost, state)
     node = Node(state=problem_subclass.initial, path_cost=0)
     frontier = PriorityQueue()
@@ -94,15 +95,15 @@ def uniform_cost_search(problem_subclass):
         if frontier.empty():
             # Failure, no solution.
             print("CRITICAL: Frontier now empty. No solution possible. Search Failure.")
-            return None
+            return None, num_nodes_expanded
         node = frontier.get_nowait()
         print("Just Removed Node (State: %s, Action: %s, PC: %d) from Frontier for expansion."
               % (node.state, node.action, node.path_cost))
-        print("Frontier Now: %s" % frontier.queue)
+        print("Frontier Now Length %d: %s" % (len(frontier.queue), frontier.queue))
         if problem_subclass.goal_test(node.state):
             print("CRITICAL: Reached goal state! Returning solution...")
             solution_string = get_solution_from_node(goal_node=node)
-            return solution_string
+            return solution_string, num_nodes_expanded
         # Modify the node's state to be hashable for a set:
         # hashable_state = node.__hash__()
         explored.add(node)
@@ -115,9 +116,12 @@ def uniform_cost_search(problem_subclass):
                                                               action=action,state2=resultant_state)
             child_node = Node(state=resultant_state, path_cost=path_cost + node.path_cost,
                               problem=problem_subclass, node=node, action=action)
+            num_nodes_expanded += 1
             # child_node.problem.print_world(child_node.state)
-            print("Generated new child_node (State: %s, Action: %s, PC: %d) for consideration."
+            print("Generated new child_node (State: %s, Action Performed: %s, PC: %d) for consideration."
                   % (child_node.state, child_node.action, child_node.path_cost))
+            print("Agent moved FROM: %s TO: %s with action %s"
+                  % (node.state['agent_loc'], child_node.state['agent_loc'], action))
             if child_node not in explored:
                 # The child node is not explored.
                 if child_node not in frontier.queue:
@@ -151,38 +155,65 @@ def uniform_cost_search(problem_subclass):
                             frontier.put_nowait(child_node)
             '''
 
-def main(training_file):
+def main(training_file, solution_file):
     # Read in required information:
-    df = None
+    df_problems = None
+    df_solutions = None
+    # Read puzzles for specified training_file:
     with open(training_file, 'r') as fp:
-        df = pd.read_csv(fp)
-    for i, row in enumerate(df.iterrows()):
-        train_id = df['Id'][i]
-        train_board = df['board'][i]
-        game_board = train_board.split(';')[0:-1]
-        agent_location = extract_agent_location(game_board=game_board)
-        pet_locations = get_street_pet_locations(game_board=game_board)
-        # Define our initial state to be: (location, pets_in_car, pets_on_street)
-        init_state = {'agent_loc': agent_location, 'pets_in_car': [], 'pets_in_street': pet_locations}
-        # Define our goal state to be: (location, pets_in_car=[], pets_on_street={})
-        desired_goal_state = {'pets_in_car': [], 'pets_in_street': {}}
-        # Define our problem to be:
-        pet_detective_problem = PetDetectiveProblem(initial_state=init_state,
-                                                    goal_state=desired_goal_state, game_board=game_board)
-        pet_detective_problem.print_world(game_state=init_state)
-        start_time_uniform_cost = time.time()
-        solution = uniform_cost_search(problem_subclass=pet_detective_problem)
-        if solution is not None:
-            # Solution found!
-            print("----------------Solution Time %s Seconds for Valid Solution-------------"
-                  % (time.time() - start_time_uniform_cost))
-            print("Solution String: %s" % solution)
-        # TODO: Modify program to not re-solve puzzles and to restart timeclock.
+        df_problems = pd.read_csv(fp)
+    # Read solutions for specified training_file:
+    with open(solution_file, 'r') as fp:
+        df_solutions = pd.read_csv(fp)
+    for i, row in enumerate(df_problems.iterrows()):
+        try:
+            solution_row = df_solutions.iloc[0]
+            # Solution already exists:
+            print("Solution for Problem Set: %s, Puzzle ID: %d already exists." % (training_file, i))
+        except IndexError:
+            print("Solution for Problem Set: %s, Puzzle ID: %d does not exist. Attempting to solve..." % (training_file, i))
+            # solution does not already exist.
+            train_id = df_problems['Id'][i]
+            train_board = df_problems['board'][i]
+            game_board = train_board.split(';')[0:-1]
+            solvable = False
+            agent_location = extract_agent_location(game_board=game_board)
+            pet_locations = get_street_pet_locations(game_board=game_board)
+            # Define our initial state to be: (location, pets_in_car, pets_on_street)
+            init_state = {'agent_loc': agent_location, 'pets_in_car': [], 'pets_in_street': pet_locations}
+            # Define our goal state to be: (location, pets_in_car=[], pets_on_street={})
+            desired_goal_state = {'pets_in_car': [], 'pets_in_street': {}}
+            # Define our problem to be:
+            pet_detective_problem = PetDetectiveProblem(initial_state=init_state,
+                                                        goal_state=desired_goal_state, game_board=game_board)
+            pet_detective_problem.print_world(game_state=init_state)
+            start_time_uniform_cost = time.time()
+            solution, num_nodes_expanded = uniform_cost_search(problem_subclass=pet_detective_problem)
+            solution_time = (time.time() - start_time_uniform_cost)
+            if solution is not None:
+                # Solution found!
+                solvable = True
+                print("----------------Solution Time %s Seconds for Valid Solution of Puzzle %d-------------"
+                      % (i, solution_time))
+                print("Solution String: %s" % solution)
+            else:
+                print("----------------Solution Time %s Seconds for NO Solution of Puzzle %d-------------"
+                      % (i, solution_time))
+                print("Solution: NONE")
+            # Write solution to csv of form:
+            #problem_set,puzzle_id,solvable,solution,num_nodes_expanded,solution_time
+            csv_line = '%s,%d,%s,%s,%d,%f\n' \
+                       % (training_file, train_id, solvable, solution, num_nodes_expanded, solution_time)
+            with open(solution_file, 'a') as fp:
+                fp.write(csv_line)
         break
+            # TODO: Modify program to not re-solve puzzles and to restart timeclock.
 
 
 if __name__ == '__main__':
     # Enumerate training files:
     training_data = ['../prog2/train/lumosity_breadth_first_search_train.csv']
+    # Grab solution file:
+    solution_file = '../prog2/solutions/solutions.csv'
     # Perform experiment for desired training file:
-    main(training_file=training_data[0])
+    main(training_file=training_data[0], solution_file=solution_file)
