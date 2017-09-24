@@ -8,10 +8,25 @@ from sortedcontainers import SortedList
 from prog2.PetDetectiveProblem import PetDetectiveProblem
 from prog2.Node import Node
 import time
+from line_profiler import LineProfiler
 
 __author__ = "Chris Campell"
 __version__ = "9/19/2017"
 
+def do_profile(follow=[]):
+    def inner(func):
+        def profiled_func(*args, **kwargs):
+            try:
+                profiler = LineProfiler()
+                profiler.add_function(func)
+                for f in follow:
+                    profiler.add_function(f)
+                profiler.enable_by_count()
+                return func(*args, **kwargs)
+            finally:
+                profiler.print_stats()
+        return profiled_func
+    return inner
 
 def extract_agent_location(game_board):
     """
@@ -80,6 +95,7 @@ def get_hashable_state_representation(state):
     return hashable_rep
 
 
+@do_profile()
 def uniform_cost_search(problem_subclass):
     num_nodes_expanded = 0
     # Define a node of the form: (path_cost, state)
@@ -99,7 +115,7 @@ def uniform_cost_search(problem_subclass):
         node = frontier.get_nowait()
         print("Just Removed Node (State: %s, Action: %s, PC: %d) from Frontier for expansion."
               % (node.state, node.action, node.path_cost))
-        print("Frontier Now Length %d: %s" % (len(frontier.queue), frontier.queue))
+        # print("Frontier Now Length %d: %s" % (len(frontier.queue), frontier.queue))
         if problem_subclass.goal_test(node.state):
             print("CRITICAL: Reached goal state! Returning solution...")
             solution_string = get_solution_from_node(goal_node=node)
@@ -109,7 +125,7 @@ def uniform_cost_search(problem_subclass):
         explored.add(node)
         print("Just added Node (State: %s, Action: %s, PC: %d) to Explored (if not already in set)."
               % (node.state, node.action, node.path_cost))
-        print("Explored now: %s" % explored)
+        # print("Explored now: %s" % explored)
         for action in problem_subclass.actions(node.state):
             resultant_state = problem_subclass.result(state=node.state, action=action)
             path_cost = problem_subclass.path_cost(c=1,state1=node.state,
@@ -130,7 +146,7 @@ def uniform_cost_search(problem_subclass):
                     frontier.put_nowait(child_node)
                     print("Just Added Node (State: %s, Action: %s, PC: %d) to Frontier."
                           % (child_node.state, child_node.action, child_node.path_cost))
-                    print("Frontier Now: %s" % frontier.queue)
+                    # print("Frontier Now: %s" % frontier.queue)
                 else:
                     # The child node is not explored, and is in the frontier.
                     # Does the child in the frontier have a higher path cost:
@@ -154,7 +170,6 @@ def uniform_cost_search(problem_subclass):
                             frontier.queue.remove(node)
                             frontier.put_nowait(child_node)
             '''
-
 def main(training_file, solution_file):
     # Read in required information:
     df_problems = None
@@ -167,13 +182,13 @@ def main(training_file, solution_file):
         df_solutions = pd.read_csv(fp)
     for i, row in enumerate(df_problems.iterrows()):
         try:
-            solution_row = df_solutions.iloc[0]
+            solution_row = df_solutions.iloc[i]
             # Solution already exists:
-            print("Solution for Problem Set: %s, Puzzle ID: %d already exists." % (training_file, i))
+            print("Solution for Problem Set: %s, Puzzle ID: %d already exists." % (training_file, i+1))
         except IndexError:
-            print("Solution for Problem Set: %s, Puzzle ID: %d does not exist. Attempting to solve..." % (training_file, i))
             # solution does not already exist.
             train_id = df_problems['Id'][i]
+            print("Solution for Problem Set: %s, Puzzle ID: %d does not exist. Attempting to solve..." % (training_file, train_id))
             train_board = df_problems['board'][i]
             game_board = train_board.split(';')[0:-1]
             solvable = False
@@ -206,9 +221,8 @@ def main(training_file, solution_file):
                        % (training_file, train_id, solvable, solution, num_nodes_expanded, solution_time)
             with open(solution_file, 'a') as fp:
                 fp.write(csv_line)
-        break
             # TODO: Modify program to not re-solve puzzles and to restart timeclock.
-
+            break
 
 if __name__ == '__main__':
     # Enumerate training files:
