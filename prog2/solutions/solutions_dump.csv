@@ -1,0 +1,9 @@
+problem_set,puzzle_id,solvable,solution,num_nodes_expanded,solution_time
+../prog2/train/lumosity_breadth_first_search_train.csv,1,True,rrddlllllluuuurr,235,0.108588
+../prog2/train/lumosity_breadth_first_search_train.csv,2,True,ddrruuuulllldddd,395,0.198942
+../prog2/train/lumosity_breadth_first_search_train.csv,3,True,llrruulllldddduuuurrrrrrllddddll,1540,1.247920
+../prog2/train/lumosity_breadth_first_search_train.csv,4,True,uullllddddrrrrrrrruurruulldd,1712,1.507650
+../prog2/train/lumosity_breadth_first_search_train.csv,5,True,uullllddddrruuuurrddrruurrddddllll,18357,159.514729
+../prog2/train/lumosity_breadth_first_search_train.csv,6,True,uurrddrrddddlllllllllluuuurrddrrrruulluu,41001,205.845626
+../prog2/train/lumosity_breadth_first_search_train.csv,7,True,lllluurrrrrrddddlllllluuuurrrrrrrrddrrdduuuu,151334,2854.183803
+../prog2/train/lumosity_breadth_first_search_train.csv,8,True,llrrrrrruuuullllllllllddddddrrrrrrrruulluullll,344058,16361.653236
