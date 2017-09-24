@@ -46,6 +46,7 @@ class PetDetectiveProblem(Problem):
         """
         is_valid_action: Determines if the specified action is executable based on the presence of the roadways and the
             map edge.
+        :param agent_location: The location of the agent when executing the supplied action.
         :param action: The action that the agent wishes to perform in the context of the environment.
         :return boolean: True if the action is executable according to game rules, false otherwise.
         """
@@ -98,6 +99,7 @@ class PetDetectiveProblem(Problem):
             elif action == 'd':
                 updated_location = (state['agent_loc'][0] + 1, state['agent_loc'][1])
             else:
+                updated_location = None
                 print("This shouldn't happen.")
             for pet, pet_location in state['pets_in_street'].items():
                 if updated_location == pet_location:
@@ -105,7 +107,6 @@ class PetDetectiveProblem(Problem):
                     resultant_state['pets_in_car'].append(pet)
                     # Remove the pet from the street:
                     resultant_state['pets_in_street'].pop(pet)
-            # TODO: Double check implementation of pet dropoff.
             # Check to see if pet dropoff is necessary:
             if state['pets_in_car']:
                 for pet_house, house_location in self.pet_house_locations.items():
@@ -183,4 +184,3 @@ class PetDetectiveProblem(Problem):
         for i, row in enumerate(self.game_board):
             world_string = world_string + row + "\n"
         print(world_string)
-
