@@ -114,7 +114,7 @@ class PetDetectiveProblem(Problem):
                         if pet_house.lower() in state['pets_in_car']:
                             # The pet is in the car:
                             # Remove the pet from the car:
-                            state['pets_in_car'].remove(pet_house.lower())
+                            resultant_state['pets_in_car'].remove(pet_house.lower())
             resultant_state['agent_loc'] = updated_location
             return resultant_state
 
