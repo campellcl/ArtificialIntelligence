@@ -1,0 +1,194 @@
+initial agent location: (3, 5)
+...........
+.+-C-----+.
+.|.|...|.|.
+.|.+-^-d-+.
+.|.....|.|.
+.c---D-+-+.
+...........
+Debug issue one: 
+conditional on line 95 checking to see if child_node not in exlpored instead of child_node.state not in explored
+However, child_node.state is a dictionary which has no hashable representation. child_node does have a hashable representation but it isnt comparing path costs. 
+Original line: 'if child_node not in explored or child_node not in frontier.queue':
+	frontier.put_nowait(child_node)
+.......
+.P-C-+.
+.|.|.|.
+.|.^.c.
+.|.|.|.
+.D-d-p.
+.......
+
+Timer unit: 3.94739e-07 s
+
+Total time: 2797.58 s
+File: C:/Users/Chris/Documents/GitHub/ArtificialIntelligence/prog2/p2.py
+Function: uniform_cost_search at line 98
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    98                                           @do_profile()
+    99                                           def uniform_cost_search(problem_subclass):
+   100         1            5      5.0      0.0      num_nodes_expanded = 0
+   101                                               # Define a node of the form: (path_cost, state)
+   102         1           25     25.0      0.0      node = Node(state=problem_subclass.initial, path_cost=0)
+   103         1          131    131.0      0.0      frontier = PriorityQueue()
+   104                                               # Add the initial node to the frontier:
+   105         1           99     99.0      0.0      frontier.put_nowait(node)
+   106         1           63     63.0      0.0      print("Just Added Node (State: %s, Action: %s, PC: %d) to Frontier." % (node.state, node.action, node.path_cost))
+   107         1           33     33.0      0.0      print("Frontier Now: %s" % frontier.queue)
+   108                                               # Initialize the explored set:
+   109         1            4      4.0      0.0      explored = set()
+   110         1            2      2.0      0.0      while True:
+   111     68740      1292681     18.8      0.0          if frontier.empty():
+   112                                                       # Failure, no solution.
+   113                                                       print("CRITICAL: Frontier now empty. No solution possible. Search Failure.")
+   114                                                       return None, num_nodes_expanded
+   115     68740     10129967    147.4      0.1          node = frontier.get_nowait()
+   116     68740       186643      2.7      0.0          print("Just Removed Node (State: %s, Action: %s, PC: %d) from Frontier for expansion."
+   117     68740      3705321     53.9      0.1                % (node.state, node.action, node.path_cost))
+   118                                                   # print("Frontier Now Length %d: %s" % (len(frontier.queue), frontier.queue))
+   119     68740       780351     11.4      0.0          if problem_subclass.goal_test(node.state):
+   120         1           22     22.0      0.0              print("CRITICAL: Reached goal state! Returning solution...")
+   121         1          216    216.0      0.0              solution_string = get_solution_from_node(goal_node=node)
+   122         1            2      2.0      0.0              return solution_string, num_nodes_expanded
+   123                                                   # Modify the node's state to be hashable for a set:
+   124                                                   # hashable_state = node.__hash__()
+   125     68739      1277753     18.6      0.0          explored.add(node)
+   126     68739       157157      2.3      0.0          print("Just added Node (State: %s, Action: %s, PC: %d) to Explored (if not already in set)."
+   127     68739      2842377     41.4      0.0                % (node.state, node.action, node.path_cost))
+   128                                                   # print("Explored now: %s" % explored)
+   129    220073      4165659     18.9      0.1          for action in problem_subclass.actions(node.state):
+   130    151334     71729057    474.0      1.0              resultant_state = problem_subclass.result(state=node.state, action=action)
+   131    151334       513078      3.4      0.0              path_cost = problem_subclass.path_cost(c=1,state1=node.state,
+   132    151334       826067      5.5      0.0                                                                action=action,state2=resultant_state)
+   133    151334       424853      2.8      0.0              child_node = Node(state=resultant_state, path_cost=path_cost + node.path_cost,
+   134    151334      2784784     18.4      0.0                                problem=problem_subclass, node=node, action=action)
+   135    151334       431619      2.9      0.0              num_nodes_expanded += 1
+   136                                                       # child_node.problem.print_world(child_node.state)
+   137    151334       327872      2.2      0.0              print("Generated new child_node (State: %s, Action Performed: %s, PC: %d) for consideration."
+   138    151334      7704723     50.9      0.1                    % (child_node.state, child_node.action, child_node.path_cost))
+   139    151334       448258      3.0      0.0              print("Agent moved FROM: %s TO: %s with action %s"
+   140    151334      4271868     28.2      0.1                    % (node.state['agent_loc'], child_node.state['agent_loc'], action))
+   141    151334      4685569     31.0      0.1              if child_node not in explored:
+   142                                                           # The child node is not explored.
+   143     81867   6089235096  74379.6     85.9                  if child_node not in frontier.queue:
+   144                                                               # The child node is not explored, and is not in the frontier.
+   145                                                               # Add the child node to the frontier for expansion.
+   146     73130      8108594    110.9      0.1                      frontier.put_nowait(child_node)
+   147     73130       287322      3.9      0.0                      print("Just Added Node (State: %s, Action: %s, PC: %d) to Frontier."
+   148     73130      9323894    127.5      0.1                            % (child_node.state, child_node.action, child_node.path_cost))
+   149                                                               # print("Frontier Now: %s" % frontier.queue)
+   150                                                           else:
+   151                                                               # The child node is not explored, and is in the frontier.
+   152                                                               # Does the child in the frontier have a higher path cost:
+   153  32397408     81798284      2.5      1.2                      for index, frontier_node in enumerate(frontier.queue):
+   154  32388671    777529206     24.0     11.0                          if frontier_node == child_node:
+   155      8737        24687      2.8      0.0                              if frontier_node.path_cost > child_node.path_cost:
+   156                                                                           # The frontier's copy of the node has a higher path-cost.
+   157                                                                           # Replace the frontier's copy with the new copy with lower path cost.
+   158                                                                           frontier.queue[index] = child_node
+   159                                                       else:
+   160                                                           # The child node is explored.
+   161     69467      1756793     25.3      0.0                  print("The generated child node was already in Explored. Generating a new one...")
+   162                                                       '''
+   163                                                       if child_node not in explored or child_node not in frontier.queue:
+   164                                                           frontier.put_nowait(child_node)
+   165                                                       elif child_node in frontier:
+   166                                                           # check to see if frontier child_node has higher path cost:
+   167                                                           for node in frontier.queue:
+   168                                                               if node[1]['state'] == child_node[1]['state']:
+   169                                                                   if node[0] > child_node[0]:
+   170                                                                       frontier.queue.remove(node)
+   171                                                                       frontier.put_nowait(child_node)
+   172    142597       414615      2.9      0.0              '''
+
+----------------Solution Time 6 Seconds for Valid Solution of Puzzle 2854-------------
+Solution String: lllluurrrrrrddddlllllluuuurrrrrrrrddrrdduuuu
+
+Total time: 16033.1 s
+File: C:/Users/Chris/Documents/GitHub/ArtificialIntelligence/prog2/p2.py
+Function: uniform_cost_search at line 98
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    98                                           @do_profile()
+    99                                           def uniform_cost_search(problem_subclass):
+   100         1            4      4.0      0.0      num_nodes_expanded = 0
+   101                                               # Define a node of the form: (path_cost, state)
+   102         1           23     23.0      0.0      node = Node(state=problem_subclass.initial, path_cost=0)
+   103         1          128    128.0      0.0      frontier = PriorityQueue()
+   104                                               # Add the initial node to the frontier:
+   105         1          104    104.0      0.0      frontier.put_nowait(node)
+   106         1           65     65.0      0.0      print("Just Added Node (State: %s, Action: %s, PC: %d) to Frontier." % (node.state, node.action, node.path_cost))
+   107         1           36     36.0      0.0      print("Frontier Now: %s" % frontier.queue)
+   108                                               # Initialize the explored set:
+   109         1            4      4.0      0.0      explored = set()
+   110         1            2      2.0      0.0      while True:
+   111    152180      3018183     19.8      0.0          if frontier.empty():
+   112                                                       # Failure, no solution.
+   113                                                       print("CRITICAL: Frontier now empty. No solution possible. Search Failure.")
+   114                                                       return None, num_nodes_expanded
+   115    152180     23917008    157.2      0.1          node = frontier.get_nowait()
+   116    152180       405411      2.7      0.0          print("Just Removed Node (State: %s, Action: %s, PC: %d) from Frontier for expansion."
+   117    152180      8548092     56.2      0.0                % (node.state, node.action, node.path_cost))
+   118                                                   # print("Frontier Now Length %d: %s" % (len(frontier.queue), frontier.queue))
+   119    152180      1766867     11.6      0.0          if problem_subclass.goal_test(node.state):
+   120         1           46     46.0      0.0              print("CRITICAL: Reached goal state! Returning solution...")
+   121         1          229    229.0      0.0              solution_string = get_solution_from_node(goal_node=node)
+   122         1            3      3.0      0.0              return solution_string, num_nodes_expanded
+   123                                                   # Modify the node's state to be hashable for a set:
+   124                                                   # hashable_state = node.__hash__()
+   125    152179      2818864     18.5      0.0          explored.add(node)
+   126    152179       360076      2.4      0.0          print("Just added Node (State: %s, Action: %s, PC: %d) to Explored (if not already in set)."
+   127    152179      6519416     42.8      0.0                % (node.state, node.action, node.path_cost))
+   128                                                   # print("Explored now: %s" % explored)
+   129    496237      9006386     18.1      0.0          for action in problem_subclass.actions(node.state):
+   130    344058    178625586    519.2      0.4              resultant_state = problem_subclass.result(state=node.state, action=action)
+   131    344058      1129235      3.3      0.0              path_cost = problem_subclass.path_cost(c=1,state1=node.state,
+   132    344058      1893762      5.5      0.0                                                                action=action,state2=resultant_state)
+   133    344058       956819      2.8      0.0              child_node = Node(state=resultant_state, path_cost=path_cost + node.path_cost,
+   134    344058      6130257     17.8      0.0                                problem=problem_subclass, node=node, action=action)
+   135    344058       974991      2.8      0.0              num_nodes_expanded += 1
+   136                                                       # child_node.problem.print_world(child_node.state)
+   137    344058       731591      2.1      0.0              print("Generated new child_node (State: %s, Action Performed: %s, PC: %d) for consideration."
+   138    344058     18674479     54.3      0.0                    % (child_node.state, child_node.action, child_node.path_cost))
+   139    344058       988304      2.9      0.0              print("Agent moved FROM: %s TO: %s with action %s"
+   140    344058      9937020     28.9      0.0                    % (node.state['agent_loc'], child_node.state['agent_loc'], action))
+   141    344058     11053602     32.1      0.0              if child_node not in explored:
+   142                                                           # The child node is not explored.
+   143    184977  35040808869 189433.3     86.3                  if child_node not in frontier.queue:
+   144                                                               # The child node is not explored, and is not in the frontier.
+   145                                                               # Add the child node to the frontier for expansion.
+   146    163800     18196774    111.1      0.0                      frontier.put_nowait(child_node)
+   147    163800       700279      4.3      0.0                      print("Just Added Node (State: %s, Action: %s, PC: %d) to Frontier."
+   148    163800     21462864    131.0      0.1                            % (child_node.state, child_node.action, child_node.path_cost))
+   149                                                               # print("Frontier Now: %s" % frontier.queue)
+   150                                                           else:
+   151                                                               # The child node is not explored, and is in the frontier.
+   152                                                               # Does the child in the frontier have a higher path cost:
+   153 195842585    493556705      2.5      1.2                      for index, frontier_node in enumerate(frontier.queue):
+   154 195821408   4749601069     24.3     11.7                          if frontier_node == child_node:
+   155     21177        58321      2.8      0.0                              if frontier_node.path_cost > child_node.path_cost:
+   156                                                                           # The frontier's copy of the node has a higher path-cost.
+   157                                                                           # Replace the frontier's copy with the new copy with lower path cost.
+   158                                                                           frontier.queue[index] = child_node
+   159                                                       else:
+   160                                                           # The child node is explored.
+   161    159081      4128730     26.0      0.0                  print("The generated child node was already in Explored. Generating a new one...")
+   162                                                       '''
+   163                                                       if child_node not in explored or child_node not in frontier.queue:
+   164                                                           frontier.put_nowait(child_node)
+   165                                                       elif child_node in frontier:
+   166                                                           # check to see if frontier child_node has higher path cost:
+   167                                                           for node in frontier.queue:
+   168                                                               if node[1]['state'] == child_node[1]['state']:
+   169                                                                   if node[0] > child_node[0]:
+   170                                                                       frontier.queue.remove(node)
+   171                                                                       frontier.put_nowait(child_node)
+   172    322881       872873      2.7      0.0              '''
+
+----------------Solution Time 7 Seconds for Valid Solution of Puzzle 16361-------------
+Solution String: llrrrrrruuuullllllllllddddddrrrrrrrruulluullll
+
+Process finished with exit code 0
