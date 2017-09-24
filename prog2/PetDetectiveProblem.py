@@ -69,14 +69,14 @@ class PetDetectiveProblem(Problem):
         """
         actions = []
         agent_loc = state['agent_loc']
-        if self.is_valid_action(agent_location=agent_loc, action='u'):
-            actions.append('u')
-        if self.is_valid_action(agent_location=agent_loc, action='r'):
-            actions.append('r')
-        if self.is_valid_action(agent_location=agent_loc, action='l'):
-            actions.append('l')
         if self.is_valid_action(agent_location=agent_loc, action='d'):
             actions.append('d')
+        if self.is_valid_action(agent_location=agent_loc, action='l'):
+            actions.append('l')
+        if self.is_valid_action(agent_location=agent_loc, action='r'):
+            actions.append('r')
+        if self.is_valid_action(agent_location=agent_loc, action='u'):
+            actions.append('u')
         return actions
 
     def result(self, state, action):
