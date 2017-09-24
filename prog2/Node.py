@@ -29,12 +29,13 @@ class Node:
         return hash(hashable_tuple)
 
     def __eq__(self, other):
-        # TODO: Should this method really rely on __hash__ for equality comparison? May be circular invariant dependency.
+        # TODO: Ensure this still works after modifying from hash-based comparator.
         if self._is_valid_operand(other):
-            if self.__hash__() == other.__hash__():
-                return True
-            else:
-                return False
+            if self.state['agent_loc'] == other.state['agent_loc']:
+                if self.state['pets_in_car'] == other.state['pets_in_car']:
+                    if self.state['pets_in_street'] == other.state['pets_in_street']:
+                        return True
+            return False
         else:
             return NotImplemented
 
@@ -57,31 +58,38 @@ class Node:
     def __lt__(self, other):
         if not self._is_valid_operand(other):
             return NotImplemented
-        return (self.path_cost, self.action) < (other.path_cost, other.action)
+        return self.action < other.action
 
     def __le__(self, other):
         if not self._is_valid_operand(other):
             return NotImplemented
-        return (self.path_cost, self.action) <= (other.path_cost, other.action)
+        return self.action <= other.action
 
     def __ne__(self, other):
-        # TODO: Should this method really rely on __hash__ for equality comparison? May be circular invariant dependency.
-        if not self._is_valid_operand(other):
-            return NotImplemented
+        # TODO: Ensure this still works after modifying from hash-based comparator.
+        if self._is_valid_operand(other):
+            if self.state['agent_loc'] != other.state['agent_loc']:
+                if self.state['pets_in_car'] != other.state['pets_in_car']:
+                    if self.state['pets_in_street'] != other.state['pets_in_street']:
+                        return True
+            return False
         else:
-            return self.__hash__() != other.__hash__()
+            return NotImplemented
 
     def __gt__(self, other):
         if not self._is_valid_operand(other):
             return NotImplemented
         else:
-            return (self.path_cost, self.action) > (other.path_cost, other.action)
+            return self.action > other.action
 
     def __ge__(self, other):
         if not self._is_valid_operand(other):
             return NotImplemented
         else:
-            return (self.path_cost, self.action) >= (other.path_cost, other.action)
+            return self.action >= other.action
+
+    def __repr__(self):
+        return "(Action Performed: %s, PC: %d, State: %s)" % (self.action, self.path_cost, self.state)
 
     def get_state(self):
         return self.state
