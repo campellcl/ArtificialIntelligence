@@ -10,7 +10,6 @@ __author__ = "Chris Campell"
 __version__ = "9/20/2017"
 
 
-@total_ordering
 class Node:
     state = None
     path_cost = None
@@ -30,7 +29,7 @@ class Node:
         return hash(hashable_tuple)
 
     def __eq__(self, other):
-        # TODO: Ensure that path cost comparison should not be performed when testing for state equality.
+        # TODO: Should this method really rely on __hash__ for equality comparison? May be circular invariant dependency.
         if self._is_valid_operand(other):
             if self.__hash__() == other.__hash__():
                 return True
@@ -59,6 +58,30 @@ class Node:
         if not self._is_valid_operand(other):
             return NotImplemented
         return (self.path_cost, self.action) < (other.path_cost, other.action)
+
+    def __le__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        return (self.path_cost, self.action) <= (other.path_cost, other.action)
+
+    def __ne__(self, other):
+        # TODO: Should this method really rely on __hash__ for equality comparison? May be circular invariant dependency.
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        else:
+            return self.__hash__() != other.__hash__()
+
+    def __gt__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        else:
+            return (self.path_cost, self.action) > (other.path_cost, other.action)
+
+    def __ge__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        else:
+            return (self.path_cost, self.action) >= (other.path_cost, other.action)
 
     def get_state(self):
         return self.state
