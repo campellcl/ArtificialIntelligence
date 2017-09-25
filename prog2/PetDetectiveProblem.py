@@ -101,12 +101,13 @@ class PetDetectiveProblem(Problem):
             else:
                 updated_location = None
                 print("This shouldn't happen.")
-            for pet, pet_location in state['pets_in_street'].items():
-                if updated_location == pet_location:
-                    # Append the pet to the car:
-                    resultant_state['pets_in_car'].append(pet)
-                    # Remove the pet from the street:
-                    resultant_state['pets_in_street'].pop(pet)
+            if state['pets_in_street']:
+                for pet, pet_location in state['pets_in_street'].items():
+                    if updated_location == pet_location:
+                        # Append the pet to the car:
+                        resultant_state['pets_in_car'].append(pet)
+                        # Remove the pet from the street:
+                        resultant_state['pets_in_street'].pop(pet)
             # Check to see if pet dropoff is necessary:
             if state['pets_in_car']:
                 for pet_house, house_location in self.pet_house_locations.items():
