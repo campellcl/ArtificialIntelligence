@@ -4,7 +4,7 @@ Implementation of Artificial Intelligence's second programming assignment.
 """
 import pandas as pd
 from queue import Queue
-from sortedcontainers import SortedList
+from sortedcontainers import SortedListWithKey
 from prog2.PetDetectiveProblem import PetDetectiveProblem
 from prog2.Node import Node
 import time
@@ -77,7 +77,7 @@ def get_solution_from_node(goal_node):
             solution_string = solution_string + node_child.action
         node_child = node_child.node
 
-    return solution_string[::-1]
+    return solution_string[::-2]
 
 
 def get_hashable_state_representation(state):
@@ -161,6 +161,58 @@ def uniform_cost_search(problem_subclass):
                 print("The generated child node was already in Explored. Generating a new one...")
 
 
+def heuristic(state):
+    num_pets_in_car = len(state['pets_in_car'])
+    num_pets_in_street = len(state['pets_in_street'])
+    return num_pets_in_car + (2 * num_pets_in_street)
+
+@do_profile()
+def a_star_search(problem_subclass):
+    num_nodes_expanded = 0
+    # Define a node of the form: (path_cost, state)
+    node = Node(state=problem_subclass.initial, path_cost=0)
+    frontier = SortedListWithKey(key=lambda val: node.path_cost + heuristic(node.state))
+    # Add the initial node to the frontier:
+    frontier.add(node)
+    # Initialize the explored set:
+    explored = set()
+    while True:
+        if len(frontier) == 0:
+            # Failure, no solution.
+            print("CRITICAL: Frontier now empty. No solution possible. Search Failure.")
+            return None, num_nodes_expanded
+        node = frontier.pop(idx=0)
+        if problem_subclass.goal_test(node.state):
+            print("CRITICAL: Reached goal state! Returning solution...")
+            solution_string = get_solution_from_node(goal_node=node)
+            return solution_string, num_nodes_expanded
+        # hashable_state = node.__hash__()
+        explored.add(node)
+        for action in problem_subclass.actions(node.state):
+            resultant_state = problem_subclass.result(state=node.state, action=action)
+            path_cost = 1
+            child_node = Node(state=resultant_state, path_cost=path_cost + node.path_cost,
+                              problem=problem_subclass, node=node, action=action)
+            num_nodes_expanded += 1
+            if child_node not in explored:
+                # The child node is not explored.
+                if child_node not in frontier:
+                    # The child node is not explored, and is not in the frontier.
+                    # Add the child node to the frontier for expansion.
+                    frontier.add(child_node)
+                else:
+                    # The child node is not explored, and is in the frontier.
+                    # Does the child in the frontier have a higher path cost:
+                    for index, frontier_node in enumerate(frontier):
+                        if frontier_node == child_node:
+                            if frontier_node.path_cost > child_node.path_cost:
+                                # The frontier's copy of the node has a higher path-cost.
+                                # Replace the frontier's copy with the new copy with lower path cost.
+                                frontier[index] = child_node
+            else:
+                # The child node is explored.
+                pass
+
 def breadth_first_search(problem_subclass):
     num_node_expanded = 0
     # Define a node of the form: (path_cost, state)
@@ -223,7 +275,7 @@ def main(training_file, solution_file):
                                                         goal_state=desired_goal_state, game_board=game_board)
             pet_detective_problem.print_world(game_state=init_state)
             start_time_uniform_cost = time.time()
-            solution, num_nodes_expanded = breadth_first_search(problem_subclass=pet_detective_problem)
+            solution, num_nodes_expanded = a_star_search(problem_subclass=pet_detective_problem)
             solution_time = (time.time() - start_time_uniform_cost)
             if solution is not None:
                 # Solution found!
@@ -242,12 +294,12 @@ def main(training_file, solution_file):
             with open(solution_file, 'a') as fp:
                 fp.write(csv_line)
             # TODO: Modify program to not re-solve puzzles and to restart timeclock.
-            break
+            # break
 
 if __name__ == '__main__':
     # Enumerate training files:
-    training_data = ['../prog2/train/lumosity_breadth_first_search_train.csv']
+    training_data = ['../prog2/train/lumosity_a_star_search_train.csv']
     # Grab solution file:
-    solution_file = '../prog2/solutions/breadth_first_solutions.csv'
+    solution_file = '../prog2/solutions/a_star_solutions.csv'
     # Perform experiment for desired training file:
     main(training_file=training_data[0], solution_file=solution_file)
