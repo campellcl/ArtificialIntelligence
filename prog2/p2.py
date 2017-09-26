@@ -4,9 +4,10 @@ Implementation of Artificial Intelligence's second programming assignment.
 """
 import pandas as pd
 from queue import Queue
-from sortedcontainers import SortedListWithKey
+from sortedcontainers import SortedSet
 from prog2.PetDetectiveProblem import PetDetectiveProblem
 from prog2.Node import Node
+from prog2.Frontier import Frontier
 import time
 from line_profiler import LineProfiler
 
@@ -76,7 +77,6 @@ def get_solution_from_node(goal_node):
         if node_child.action is not None:
             solution_string = solution_string + node_child.action
         node_child = node_child.node
-
     return solution_string[::-2]
 
 
@@ -166,12 +166,12 @@ def heuristic(state):
     num_pets_in_street = len(state['pets_in_street'])
     return num_pets_in_car + (2 * num_pets_in_street)
 
-@do_profile()
+# @do_profile()
 def a_star_search(problem_subclass):
     num_nodes_expanded = 0
     # Define a node of the form: (path_cost, state)
     node = Node(state=problem_subclass.initial, path_cost=0)
-    frontier = SortedListWithKey(key=lambda val: node.path_cost + heuristic(node.state))
+    frontier = Frontier(key=lambda val: node.path_cost + heuristic(node.state))
     # Add the initial node to the frontier:
     frontier.add(node)
     # Initialize the explored set:
@@ -181,7 +181,7 @@ def a_star_search(problem_subclass):
             # Failure, no solution.
             print("CRITICAL: Frontier now empty. No solution possible. Search Failure.")
             return None, num_nodes_expanded
-        node = frontier.pop(idx=0)
+        node = frontier.pop()
         if problem_subclass.goal_test(node.state):
             print("CRITICAL: Reached goal state! Returning solution...")
             solution_string = get_solution_from_node(goal_node=node)
@@ -208,7 +208,8 @@ def a_star_search(problem_subclass):
                             if frontier_node.path_cost > child_node.path_cost:
                                 # The frontier's copy of the node has a higher path-cost.
                                 # Replace the frontier's copy with the new copy with lower path cost.
-                                frontier[index] = child_node
+                                # TODO: Verify this works.
+                                frontier.add(child_node)
             else:
                 # The child node is explored.
                 pass
