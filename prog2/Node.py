@@ -5,10 +5,25 @@ Additionally, the Node must be hashable (for use with a PriorityQueue) and suppo
 """
 
 from functools import total_ordering
+from line_profiler import LineProfiler
 
 __author__ = "Chris Campell"
 __version__ = "9/20/2017"
 
+def do_profile(follow=[]):
+    def inner(func):
+        def profiled_func(*args, **kwargs):
+            try:
+                profiler = LineProfiler()
+                profiler.add_function(func)
+                for f in follow:
+                    profiler.add_function(f)
+                profiler.enable_by_count()
+                return func(*args, **kwargs)
+            finally:
+                profiler.print_stats()
+        return profiled_func
+    return inner
 
 class Node:
     state = None
@@ -20,22 +35,29 @@ class Node:
         self.problem = problem
         self.node = node
         self.action = action
+        self.hashed_value = None
 
     def __hash__(self):
         pets_in_car_hashable = frozenset(self.state['pets_in_car'])
         pets_in_street_hashable = tuple(self.state['pets_in_street'].items())
         # Warning: Do not include path cost as part of the state hashing (this is a node attribute).
         hashable_tuple = (self.state['agent_loc'], pets_in_car_hashable, pets_in_street_hashable)
+        self.hashed_value = hash(hashable_tuple)
         return hash(hashable_tuple)
 
     def __eq__(self, other):
         # TODO: Ensure this still works after modifying from hash-based comparator.
-        if self._is_valid_operand(other):
-            if self.state['agent_loc'] == other.state['agent_loc']:
-                if self.state['pets_in_car'] == other.state['pets_in_car']:
-                    if self.state['pets_in_street'] == other.state['pets_in_street']:
-                        return True
-            return False
+        if isinstance(other, Node):
+            if self.hashed_value is not None:
+                if other.hashed_value is not None:
+                    return self.hashed_value == other.hashed_value
+                else:
+                    return self.hashed_value == other.__hash__()
+            else:
+                if other.hashed_value is not None:
+                    return self.__hash__() == other.hashed_value
+                else:
+                    return self.__hash__() == other.__hash__()
         else:
             return NotImplemented
 
