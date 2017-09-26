@@ -1,7 +1,11 @@
 problem_set,puzzle_id,solvable,solution,num_nodes_expanded,solution_time
-../prog2/train/lumosity_a_star_search_train.csv,1,True,rdllluur,207,0.064042
-../prog2/train/lumosity_a_star_search_train.csv,2,True,druulldd,358,0.081052
-../prog2/train/lumosity_a_star_search_train.csv,3,True,lrurllldduurrddl,1490,0.363240
-../prog2/train/lumosity_a_star_search_train.csv,4,True,ullddrrrrruudl,1654,0.401267
-../prog2/train/lumosity_a_star_search_train.csv,5,True,ullddruurdrurddll,11589,9.424253
-../prog2/train/lumosity_a_star_search_train.csv,6,True,urdrddlllllruudrrluu,40943,73.140502
+../prog2/train/lumosity_a_star_search_train.csv,1,True,rdllluur,207,0.011007
+../prog2/train/lumosity_a_star_search_train.csv,2,True,druulldd,321,0.016010
+../prog2/train/lumosity_a_star_search_train.csv,3,True,lrurllldduurrddl,1439,0.076050
+../prog2/train/lumosity_a_star_search_train.csv,4,True,ullddrrrrruudl,1497,0.080053
+../prog2/train/lumosity_a_star_search_train.csv,5,True,ullddruurdrurddll,8106,0.566376
+../prog2/train/lumosity_a_star_search_train.csv,6,True,urdrddlllllruudrrluu,30486,2.624742
+../prog2/train/lumosity_a_star_search_train.csv,7,True,llurrrddlllurrurrdrduu,86386,11.197665
+../prog2/train/lumosity_a_star_search_train.csv,8,True,lrrruulllllddurrrddlrru,167669,41.367673
+../prog2/train/lumosity_a_star_search_train.csv,9,True,dluurlurrdurlllldddrrrrruuu,224847,53.465048
+../prog2/train/lumosity_a_star_search_train.csv,10,True,ldrruurddruuulllddldluurlu,418809,201.724337
