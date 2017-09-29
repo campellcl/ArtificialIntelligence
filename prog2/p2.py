@@ -8,6 +8,7 @@ from sortedcontainers import SortedSet
 from prog2.PetDetectiveProblem import PetDetectiveProblem
 from prog2.Node import Node
 from prog2.Frontier import Frontier
+from prog2.FIFOFrontier import FIFOFrontier
 import time
 from line_profiler import LineProfiler
 
@@ -94,8 +95,6 @@ def get_hashable_state_representation(state):
                     ('pets_in_street', pets_in_street_hashable))
     return hashable_rep
 
-
-@do_profile()
 def uniform_cost_search(problem_subclass):
     num_nodes_expanded = 0
     # Define a node of the form: (path_cost, state)
@@ -120,8 +119,6 @@ def uniform_cost_search(problem_subclass):
             print("CRITICAL: Reached goal state! Returning solution...")
             solution_string = get_solution_from_node(goal_node=node)
             return solution_string, num_nodes_expanded
-        # Modify the node's state to be hashable for a set:
-        # hashable_state = node.__hash__()
         explored.add(node)
         print("Just added Node (State: %s, Action: %s, PC: %d) to Explored (if not already in set)."
               % (node.state, node.action, node.path_cost))
@@ -208,7 +205,6 @@ def a_star_search(problem_subclass):
                             if frontier_node.path_cost > child_node.path_cost:
                                 # The frontier's copy of the node has a higher path-cost.
                                 # Replace the frontier's copy with the new copy with lower path cost.
-                                # TODO: Verify this works.
                                 frontier.add(child_node)
             else:
                 # The child node is explored.
@@ -221,27 +217,26 @@ def breadth_first_search(problem_subclass):
     if problem_subclass.goal_test(node.state):
         solution_string = get_solution_from_node(node)
         return solution_string, num_node_expanded
-    frontier = Queue()
-    frontier.put_nowait(node)
+    frontier = FIFOFrontier()
+    frontier.add(node)
     explored = set()
     while True:
-        if frontier.empty():
+        if len(frontier) == 0:
             return None, num_node_expanded
-        node = frontier.get_nowait()
-        num_node_expanded += 1
+        node = frontier.pop()
         explored.add(node)
         for action in problem_subclass.actions(node.state):
             resultant_state = problem_subclass.result(state=node.state, action=action)
             path_cost = 1
             child_node = Node(state=resultant_state, path_cost=path_cost + node.path_cost,
                               problem=problem_subclass, node=node, action=action)
+            num_node_expanded += 1
             if child_node not in explored:
-                if child_node not in frontier.queue:
+                if child_node not in frontier:
                     if problem_subclass.goal_test(child_node.state):
                         solution_string = get_solution_from_node(child_node)
                         return solution_string, num_node_expanded
-                    frontier.put_nowait(child_node)
-
+                    frontier.add(child_node)
 
 def main(training_file, solution_file):
     # Read in required information:
@@ -294,13 +289,14 @@ def main(training_file, solution_file):
                        % (training_file, train_id, solvable, solution, num_nodes_expanded, solution_time)
             with open(solution_file, 'a') as fp:
                 fp.write(csv_line)
-            # TODO: Modify program to not re-solve puzzles and to restart timeclock.
-            # break
+
 
 if __name__ == '__main__':
     # Enumerate training files:
-    training_data = ['../prog2/train/lumosity_a_star_search_train.csv']
+    training_data = ['../prog2/train/lumosity_a_star_search_train.csv', '../prog2/train/a_star_search_train.csv',
+                     '../prog2/train/lumosity_breadth_first_search_train.csv']
+    testing_data = ['../prog2/test/a_star_search_test.csv', '../prog2/test/test.csv']
     # Grab solution file:
-    solution_file = '../prog2/solutions/a_star_solutions.csv'
+    solution_file = ['../prog2/solutions/a_star_solutions.csv','../prog2/solutions/breadth_first_solutions.csv']
     # Perform experiment for desired training file:
-    main(training_file=training_data[0], solution_file=solution_file)
+    main(training_file=testing_data[1], solution_file=solution_file[0])
