@@ -28,6 +28,7 @@ def do_profile(follow=[]):
 class Node:
     state = None
     path_cost = None
+    hashed_value = None
 
     def __init__(self, state, path_cost, problem=None, node=None, action=None):
         self.state = state
