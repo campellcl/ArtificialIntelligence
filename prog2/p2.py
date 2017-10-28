@@ -3,10 +3,12 @@ p2.py
 Implementation of Artificial Intelligence's second programming assignment.
 """
 import pandas as pd
-from queue import PriorityQueue
-from sortedcontainers import SortedList
+from queue import Queue
+from sortedcontainers import SortedSet
 from prog2.PetDetectiveProblem import PetDetectiveProblem
 from prog2.Node import Node
+from prog2.Frontier import Frontier
+from prog2.FIFOFrontier import FIFOFrontier
 import time
 from line_profiler import LineProfiler
 
@@ -76,8 +78,7 @@ def get_solution_from_node(goal_node):
         if node_child.action is not None:
             solution_string = solution_string + node_child.action
         node_child = node_child.node
-
-    return solution_string[::-1]
+    return solution_string[::-2]
 
 
 def get_hashable_state_representation(state):
@@ -94,13 +95,11 @@ def get_hashable_state_representation(state):
                     ('pets_in_street', pets_in_street_hashable))
     return hashable_rep
 
-
-@do_profile()
 def uniform_cost_search(problem_subclass):
     num_nodes_expanded = 0
     # Define a node of the form: (path_cost, state)
     node = Node(state=problem_subclass.initial, path_cost=0)
-    frontier = PriorityQueue()
+    frontier = Queue()
     # Add the initial node to the frontier:
     frontier.put_nowait(node)
     print("Just Added Node (State: %s, Action: %s, PC: %d) to Frontier." % (node.state, node.action, node.path_cost))
@@ -120,8 +119,6 @@ def uniform_cost_search(problem_subclass):
             print("CRITICAL: Reached goal state! Returning solution...")
             solution_string = get_solution_from_node(goal_node=node)
             return solution_string, num_nodes_expanded
-        # Modify the node's state to be hashable for a set:
-        # hashable_state = node.__hash__()
         explored.add(node)
         print("Just added Node (State: %s, Action: %s, PC: %d) to Explored (if not already in set)."
               % (node.state, node.action, node.path_cost))
@@ -159,17 +156,88 @@ def uniform_cost_search(problem_subclass):
             else:
                 # The child node is explored.
                 print("The generated child node was already in Explored. Generating a new one...")
-            '''
-            if child_node not in explored or child_node not in frontier.queue:
-                frontier.put_nowait(child_node)
-            elif child_node in frontier:
-                # check to see if frontier child_node has higher path cost:
-                for node in frontier.queue:
-                    if node[1]['state'] == child_node[1]['state']:
-                        if node[0] > child_node[0]:
-                            frontier.queue.remove(node)
-                            frontier.put_nowait(child_node)
-            '''
+
+
+def heuristic(state):
+    num_pets_in_car = len(state['pets_in_car'])
+    num_pets_in_street = len(state['pets_in_street'])
+    return num_pets_in_car + (2 * num_pets_in_street)
+
+# @do_profile()
+def a_star_search(problem_subclass):
+    num_nodes_expanded = 0
+    # Define a node of the form: (path_cost, state)
+    node = Node(state=problem_subclass.initial, path_cost=0)
+    frontier = Frontier(key=lambda val: node.path_cost + heuristic(node.state))
+    # Add the initial node to the frontier:
+    frontier.add(node)
+    # Initialize the explored set:
+    explored = set()
+    while True:
+        if len(frontier) == 0:
+            # Failure, no solution.
+            print("CRITICAL: Frontier now empty. No solution possible. Search Failure.")
+            return None, num_nodes_expanded
+        node = frontier.pop()
+        if problem_subclass.goal_test(node.state):
+            print("CRITICAL: Reached goal state! Returning solution...")
+            solution_string = get_solution_from_node(goal_node=node)
+            return solution_string, num_nodes_expanded
+        # hashable_state = node.__hash__()
+        explored.add(node)
+        for action in problem_subclass.actions(node.state):
+            resultant_state = problem_subclass.result(state=node.state, action=action)
+            path_cost = 1
+            child_node = Node(state=resultant_state, path_cost=path_cost + node.path_cost,
+                              problem=problem_subclass, node=node, action=action)
+            num_nodes_expanded += 1
+            if child_node not in explored:
+                # The child node is not explored.
+                if child_node not in frontier:
+                    # The child node is not explored, and is not in the frontier.
+                    # Add the child node to the frontier for expansion.
+                    frontier.add(child_node)
+                else:
+                    # The child node is not explored, and is in the frontier.
+                    # Does the child in the frontier have a higher path cost:
+                    for index, frontier_node in enumerate(frontier):
+                        if frontier_node == child_node:
+                            if frontier_node.path_cost > child_node.path_cost:
+                                # The frontier's copy of the node has a higher path-cost.
+                                # Replace the frontier's copy with the new copy with lower path cost.
+                                frontier.add(child_node)
+            else:
+                # The child node is explored.
+                pass
+
+def breadth_first_search(problem_subclass):
+    num_node_expanded = 0
+    # Define a node of the form: (path_cost, state)
+    node = Node(state=problem_subclass.initial, path_cost=0)
+    if problem_subclass.goal_test(node.state):
+        solution_string = get_solution_from_node(node)
+        return solution_string, num_node_expanded
+    frontier = FIFOFrontier()
+    frontier.add(node)
+    explored = set()
+    while True:
+        if len(frontier) == 0:
+            return None, num_node_expanded
+        node = frontier.pop()
+        explored.add(node)
+        for action in problem_subclass.actions(node.state):
+            resultant_state = problem_subclass.result(state=node.state, action=action)
+            path_cost = 1
+            child_node = Node(state=resultant_state, path_cost=path_cost + node.path_cost,
+                              problem=problem_subclass, node=node, action=action)
+            num_node_expanded += 1
+            if child_node not in explored:
+                if child_node not in frontier:
+                    if problem_subclass.goal_test(child_node.state):
+                        solution_string = get_solution_from_node(child_node)
+                        return solution_string, num_node_expanded
+                    frontier.add(child_node)
+
 def main(training_file, solution_file):
     # Read in required information:
     df_problems = None
@@ -203,7 +271,7 @@ def main(training_file, solution_file):
                                                         goal_state=desired_goal_state, game_board=game_board)
             pet_detective_problem.print_world(game_state=init_state)
             start_time_uniform_cost = time.time()
-            solution, num_nodes_expanded = uniform_cost_search(problem_subclass=pet_detective_problem)
+            solution, num_nodes_expanded = a_star_search(problem_subclass=pet_detective_problem)
             solution_time = (time.time() - start_time_uniform_cost)
             if solution is not None:
                 # Solution found!
@@ -221,13 +289,14 @@ def main(training_file, solution_file):
                        % (training_file, train_id, solvable, solution, num_nodes_expanded, solution_time)
             with open(solution_file, 'a') as fp:
                 fp.write(csv_line)
-            # TODO: Modify program to not re-solve puzzles and to restart timeclock.
-            break
+
 
 if __name__ == '__main__':
     # Enumerate training files:
-    training_data = ['../prog2/train/lumosity_breadth_first_search_train.csv']
+    training_data = ['../prog2/train/lumosity_a_star_search_train.csv', '../prog2/train/a_star_search_train.csv',
+                     '../prog2/train/lumosity_breadth_first_search_train.csv']
+    testing_data = ['../prog2/test/a_star_search_test.csv', '../prog2/test/test.csv']
     # Grab solution file:
-    solution_file = '../prog2/solutions/solutions.csv'
+    solution_file = ['../prog2/solutions/a_star_solutions.csv','../prog2/solutions/breadth_first_solutions.csv']
     # Perform experiment for desired training file:
-    main(training_file=training_data[0], solution_file=solution_file)
+    main(training_file=testing_data[1], solution_file=solution_file[0])

@@ -9,6 +9,22 @@ from prog2.aima.search import Problem
 __author__ = "Chris Campell"
 __version__ = "9/19/2017"
 
+from line_profiler import LineProfiler
+
+def do_profile(follow=[]):
+    def inner(func):
+        def profiled_func(*args, **kwargs):
+            try:
+                profiler = LineProfiler()
+                profiler.add_function(func)
+                for f in follow:
+                    profiler.add_function(f)
+                profiler.enable_by_count()
+                return func(*args, **kwargs)
+            finally:
+                profiler.print_stats()
+        return profiled_func
+    return inner
 
 class PetDetectiveProblem(Problem):
     initial_state = None
@@ -69,14 +85,14 @@ class PetDetectiveProblem(Problem):
         """
         actions = []
         agent_loc = state['agent_loc']
-        if self.is_valid_action(agent_location=agent_loc, action='u'):
-            actions.append('u')
-        if self.is_valid_action(agent_location=agent_loc, action='r'):
-            actions.append('r')
-        if self.is_valid_action(agent_location=agent_loc, action='l'):
-            actions.append('l')
         if self.is_valid_action(agent_location=agent_loc, action='d'):
             actions.append('d')
+        if self.is_valid_action(agent_location=agent_loc, action='l'):
+            actions.append('l')
+        if self.is_valid_action(agent_location=agent_loc, action='r'):
+            actions.append('r')
+        if self.is_valid_action(agent_location=agent_loc, action='u'):
+            actions.append('u')
         return actions
 
     def result(self, state, action):
@@ -87,7 +103,8 @@ class PetDetectiveProblem(Problem):
         :param action: The action to apply to the initial state.
         :return resultant_state: The state that results from executing the given action in the provided state.
         """
-        resultant_state = deepcopy(state)
+        resultant_state = {'agent_loc': deepcopy(state['agent_loc']), 'pets_in_car': deepcopy(state['pets_in_car']),
+                           'pets_in_street': deepcopy(state['pets_in_street'])}
         if action in self.actions(state=state):
             # The action is valid and recognized.
             if action == 'u':
@@ -101,12 +118,13 @@ class PetDetectiveProblem(Problem):
             else:
                 updated_location = None
                 print("This shouldn't happen.")
-            for pet, pet_location in state['pets_in_street'].items():
-                if updated_location == pet_location:
-                    # Append the pet to the car:
-                    resultant_state['pets_in_car'].append(pet)
-                    # Remove the pet from the street:
-                    resultant_state['pets_in_street'].pop(pet)
+            if state['pets_in_street']:
+                for pet, pet_location in state['pets_in_street'].items():
+                    if updated_location == pet_location:
+                        # Append the pet to the car:
+                        resultant_state['pets_in_car'].append(pet)
+                        # Remove the pet from the street:
+                        resultant_state['pets_in_street'].pop(pet)
             # Check to see if pet dropoff is necessary:
             if state['pets_in_car']:
                 for pet_house, house_location in self.pet_house_locations.items():
