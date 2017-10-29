@@ -61,42 +61,82 @@ def construct_probability_table(node, observations, dependencies=None, prob_tabl
     return node_prob_table
 
 
+def is_independent(node, bayes_net):
+    """
+    is_independent: Returns True if the node is an independent node in the Bayesian Network.
+    :param node: The node for which to determine dependency.
+    :param bayes_net: The topology of the Bayesian Network.
+    :return boolean: True if the node is independent as specified in the topology of the Bayesian Network;
+        False otherwise.
+    """
+    for parent, child_list in bayes_net.items():
+        if node in child_list:
+            # The node is a child of another node, it is dependent.
+            return False
+    # The node is not a child of another node, it is independent.
+    return True
+
+def get_dependencies(node, bayes_net):
+    """
+    get_dependencies: Returns the nodes that the provided node is conditionally dependent upon.
+    :param node: The node to calculate dependencies for.
+    :param bayes_net: The topology of the Bayesian Network.
+    :return dependencies: A list of nodes that the provided node is dependent upon. Returns None if the provided node
+        is independent.
+    """
+    if is_independent(node=node, bayes_net=bayes_net):
+        # If the node is independent, it has no dependencies:
+        return None
+    dependencies = []
+    for parent, child_list in bayes_net.items():
+        if node in child_list:
+            # The node is a child of another node, it is dependent.
+            dependencies.append(parent)
+    return dependencies
+
+
+def build_probability_tables(node, bayes_net, observations, probability_tables=None, dependencies=None):
+    if dependencies is None or dependencies is False:
+        # Base case, calculate the probability of the independent variable given the observations:
+        num_true = observations[node].value_counts()[True]
+        total_num_obs = len(observations[node])
+        node_prob_table = {}
+        node_prob_table[True] = (num_true / total_num_obs)
+        node_prob_table[False] = 1 - node_prob_table[True]
+        return node_prob_table
+    else:
+        # The variable is conditionally dependent:
+        for dependency in dependencies:
+            # The CPTs for the dependent variable must be constructed first:
+            if dependency not in probability_tables:
+                # The dependent variable has no entry in the probability tables, build it:
+                probability_tables[dependency] = build_probability_tables(node=dependency, bayes_net=bayes_net,
+                                                                          observations=observations,
+                                                                          probability_tables=probability_tables,
+                                                                          dependencies=get_dependencies(dependency, bayes_net))
+        # All dependent information needed to calculate the CPT for the provided node has been generated:
+        # subset the observations by the conditional variables:
+        return NotImplementedError
+
 def main(bayes_net, observations):
+    """ build the bayesian network """
     prob_tables = {}
     for node in bayes_net:
-        is_independent = True
-        dependencies = []
-        # for child in bayes_net[node]:
-        # Is the current node a child of another node, or is it independent?
-        for parent, child_list in bayes_net.items():
-            if node in child_list:
-                # The node is a child of another node, it is dependent.
-                is_independent = False
-                # The node is dependent upon it's parent:
-                dependencies.append(parent)
-                break
-            else:
-                # The node is not a child of another node, it is independent.
-                pass
-        if node not in prob_tables:
-            # The node does not have a probability table constructed yet:
-            if is_independent:
-                '''
-                If it is an independent node, just build the probability table given the observations of the evidence
-                    variables:
-                '''
-                prob_tables[node] = construct_probability_table(node=node, observations=observations)
-            else:
-                # The node is conditionally dependent, build the probability table given the probability tables of the
-                #   dependent nodes.
-                for dependency in dependencies:
-                    if dependency not in prob_tables:
-                        # The dependent node has no previously constructed probability table:
-                        # TODO: Uh-oh, this function needs to be recursive. What if the dependent is dependent?
-                        pass
-            prob_tables[node] = construct_probability_table(
-                node=node, dependencies=dependencies, observations=observations)
-        pass
+        if is_independent(node, bayes_net):
+            # The node has no parent, it is independent.
+            if node not in prob_tables:
+                # The node is not already in the probability tables.
+                prob_tables[node] = build_probability_tables(node=node, bayes_net=bayes_net,
+                                                             observations=observations, probability_tables=prob_tables)
+        else:
+            # The node is the child of another node, it is dependent upon its parent.
+            if node not in prob_tables:
+                # The node is not already in the probability tables.
+                # Get the nodes that the current node is conditionally dependent upon:
+                dependencies = get_dependencies(node, bayes_net)
+                # Build the probability table for this node:
+                prob_tables[node] = build_probability_tables(node=node, bayes_net=bayes_net, observations=observations,
+                                                             probability_tables=prob_tables, dependencies=dependencies)
 
 if __name__ == '__main__':
     bn_one_path = 'bn1.json'
