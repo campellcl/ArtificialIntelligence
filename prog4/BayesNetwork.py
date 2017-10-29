@@ -76,6 +76,7 @@ def is_independent(node, bayes_net):
     # The node is not a child of another node, it is independent.
     return True
 
+
 def get_dependencies(node, bayes_net):
     """
     get_dependencies: Returns the nodes that the provided node is conditionally dependent upon.
@@ -115,8 +116,27 @@ def build_probability_tables(node, bayes_net, observations, probability_tables=N
                                                                           probability_tables=probability_tables,
                                                                           dependencies=get_dependencies(dependency, bayes_net))
         # All dependent information needed to calculate the CPT for the provided node has been generated:
-        # subset the observations by the conditional variables:
-        return NotImplementedError
+        probability_tables[node] = {}
+        for dependency in dependencies:
+            probability_tables[node][True] = {dependency: {True: None, False: None}}
+            probability_tables[node][False] = {dependency: {True: None, False: None}}
+            # Build the conditional probability P(Node=True | Dependency=True) and P(Node=False | Dependency=True)
+            # For every dependent variable, subset the data where the dependent var is true:
+            observation_subset_true = observations[observations[dependency] == True]
+            # Count the number of true variables in the subset of the observations:
+            num_true_in_subset = observation_subset_true[node].value_counts()[True]
+            total_num_obs_subset = len(observation_subset_true[node])
+            probability_tables[node][True][dependency][True] = (num_true_in_subset / total_num_obs_subset)
+            probability_tables[node][False][dependency][True] = 1 - (num_true_in_subset / total_num_obs_subset)
+            # Build the conditional probability P(Node=True | Dependency=False) and P(Node=False | Dependency=False)
+            # For every dependent variable, subset the data where the dependent var is false:
+            observation_subset_false = observations[observations[dependency] == False]
+            # Count the number of true variables in the subset of the observations:
+            num_true_in_subset = observation_subset_false[node].value_counts()[True]
+            total_num_obs_subset = len(observation_subset_false[node])
+            probability_tables[node][True][dependency]
+        return probability_tables
+
 
 def main(bayes_net, observations):
     """ build the bayesian network """
