@@ -5,6 +5,7 @@ An implementation of a Bayesian Network for Programming Assignment Four.
 
 import pandas as pd
 import json
+import itertools
 
 __author__ = "Chris Campell"
 __version__ = "10/28/2017"
@@ -106,35 +107,49 @@ def build_probability_tables(node, bayes_net, observations, probability_tables=N
         node_prob_table[False] = 1 - node_prob_table[True]
         return node_prob_table
     else:
-        # The variable is conditionally dependent:
+        # The variable is conditionally dependent, construct the joint of its dependencies:
+        query = 'P(' + node + "|"
         for dependency in dependencies:
-            # The CPTs for the dependent variable must be constructed first:
-            if dependency not in probability_tables:
-                # The dependent variable has no entry in the probability tables, build it:
-                probability_tables[dependency] = build_probability_tables(node=dependency, bayes_net=bayes_net,
-                                                                          observations=observations,
-                                                                          probability_tables=probability_tables,
-                                                                          dependencies=get_dependencies(dependency, bayes_net))
-        # All dependent information needed to calculate the CPT for the provided node has been generated:
-        probability_tables[node] = {}
-        for dependency in dependencies:
-            probability_tables[node][True] = {dependency: {True: None, False: None}}
-            probability_tables[node][False] = {dependency: {True: None, False: None}}
-            # Build the conditional probability P(Node=True | Dependency=True) and P(Node=False | Dependency=True)
-            # For every dependent variable, subset the data where the dependent var is true:
-            observation_subset_true = observations[observations[dependency] == True]
-            # Count the number of true variables in the subset of the observations:
-            num_true_in_subset = observation_subset_true[node].value_counts()[True]
-            total_num_obs_subset = len(observation_subset_true[node])
-            probability_tables[node][True][dependency][True] = (num_true_in_subset / total_num_obs_subset)
-            probability_tables[node][False][dependency][True] = 1 - (num_true_in_subset / total_num_obs_subset)
-            # Build the conditional probability P(Node=True | Dependency=False) and P(Node=False | Dependency=False)
-            # For every dependent variable, subset the data where the dependent var is false:
-            observation_subset_false = observations[observations[dependency] == False]
-            # Count the number of true variables in the subset of the observations:
-            num_true_in_subset = observation_subset_false[node].value_counts()[True]
-            total_num_obs_subset = len(observation_subset_false[node])
-            probability_tables[node][True][dependency]
+            query = query + dependency + ","
+        query = query[0:-1]
+        query += ')'
+        if query not in probability_tables:
+            node_prob_table = {True: None, False: None}
+            # Construct the CPT for the query:
+            observation_subset_cols = []
+            observation_subset_cols.append(node)
+            for dependency in dependencies:
+                observation_subset_cols.append(dependency)
+            # Subset the observations by the dependent variables.
+            observation_subset = observations[observation_subset_cols]
+            # Create a truth table:
+            truth_table = list(itertools.product([False, True], repeat=len(observation_subset_cols)))
+            queries = []
+            for tuple in truth_table:
+                df_query_with_node = ''
+                df_query_without_node = ''
+                human_readable_df_query = ''
+                for i in range(len(tuple)):
+                    if i == 0:
+                        human_readable_df_query = human_readable_df_query + 'P(%s=%s|' %(observation_subset_cols[i], tuple[i])
+                    else:
+                        human_readable_df_query = human_readable_df_query + '%s=%s,' %(observation_subset_cols[i], tuple[i])
+                        df_query_without_node = df_query_without_node + "%s == %s & " % (observation_subset_cols[i], tuple[i])
+                    df_query_with_node = df_query_with_node + "%s == %s & " %(observation_subset_cols[i], tuple[i])
+                human_readable_df_query = human_readable_df_query[0:-1] + ')'
+                df_query_with_node = df_query_with_node[0:-3]
+                df_query_without_node = df_query_without_node[0:-3]
+
+                '''
+                df_query = ''
+                for column in observation_subset.columns:
+                    df_query = df_query + column + ' == True & '
+                df_query = df_query[0:-3]
+                '''
+                # Query the observation_subset for instances where all dependencies are true:
+                num_true = observation_subset.query(df_query_with_node).count()[0]
+                num_total_subset = observation_subset.query(df_query_without_node).count()[0]
+                probability_tables[human_readable_df_query] = (num_true / num_total_subset)
         return probability_tables
 
 
@@ -146,8 +161,10 @@ def main(bayes_net, observations):
             # The node has no parent, it is independent.
             if node not in prob_tables:
                 # The node is not already in the probability tables.
-                prob_tables[node] = build_probability_tables(node=node, bayes_net=bayes_net,
-                                                             observations=observations, probability_tables=prob_tables)
+                # Build the key:
+                key = 'P(%s)' % node
+                prob_tables[key] = build_probability_tables(node=node, bayes_net=bayes_net,
+                                                            observations=observations, probability_tables=prob_tables)
         else:
             # The node is the child of another node, it is dependent upon its parent.
             if node not in prob_tables:
@@ -164,11 +181,21 @@ if __name__ == '__main__':
     bn_two_path = 'bn2.json'
     observations_two_path = 'data2.csv'
     with open(bn_one_path, 'r') as fp:
-        bayes_net_one = json.load(fp=fp)
+        bayes_net_one_with_spaces = json.load(fp=fp)
     with open(bn_two_path, 'r') as fp:
-        bayes_net_two = json.load(fp=fp)
+        bayes_net_two_with_spaces = json.load(fp=fp)
     with open(observations_one_path, 'r') as fp:
         observations_one = pd.read_csv(fp)
     with open(observations_two_path, 'r') as fp:
         observations_two = pd.read_csv(fp)
+    # Strip the spaces from the observations column headers:
+    observations_one.columns = [x.replace(' ', '') for x in observations_one.columns]
+    observations_two.columns = [x.replace(' ', '') for x in observations_two.columns]
+    # Strip spaces from bayes network topology for consistency:
+    bayes_net_one = {}
+    for node, dependencies in bayes_net_one_with_spaces.items():
+        bayes_net_one[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
+    bayes_net_two = {}
+    for node, dependencies in bayes_net_two_with_spaces.items():
+        bayes_net_two[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
     main(bayes_net=bayes_net_one, observations=observations_one)
