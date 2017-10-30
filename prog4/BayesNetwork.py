@@ -123,22 +123,34 @@ def enumeration_ask(X,e,bn,cpts,bns):
             edge_list.append([parent, child])
     vars = sort_direct_acyclic_graph(edge_list=edge_list)
     # x_i can only be True or False, no need for a loop:
-    Q = {'P(%s=True)' % X: None, 'P(%s=False)' % X: None}
+    # Build keys based on evidence variable and query:
+    query_true_key = 'P(%s=True|' % X
+    query_false_key = 'P(%s=False|' % X
+    for evidence, assignment in e.items():
+        query_true_key = query_true_key + '%s=%s,' % (evidence, assignment)
+        query_false_key = query_false_key + '%s=%s,' % (evidence, assignment)
+    query_true_key = query_true_key[0:-1] + ')'
+    query_false_key = query_false_key[0:-1] + ')'
+    Q = {query_true_key: None, query_false_key: None}
     e_x_i = e.copy()
     e_x_i[X] = True
     joint_prob_query = 'P(%s=%s|' % (X,True)
     for evidence, observation in e.items():
         joint_prob_query = joint_prob_query + '%s=%s,' % (evidence, observation)
     joint_prob_query = joint_prob_query[0:-1] + ')'
-    Q['P(%s=True)' % X] = enumerate_all(vars=vars, e=e_x_i, cpts=cpts, bns=bns) / cpts[joint_prob_query]
+    Q[joint_prob_query] = enumerate_all(vars=vars, e=e_x_i, cpts=cpts, bns=bns)
+
     e_x_i[X] = False
     joint_prob_query = 'P(%s=%s|' % (X,False)
     for evidence, observation in e.items():
         joint_prob_query = joint_prob_query + '%s=%s,' % (evidence, observation)
     joint_prob_query = joint_prob_query[0:-1] + ')'
-    Q['P(%s=False)' % X] = enumerate_all(vars=vars, e=e_x_i, cpts=cpts, bns=bns) / cpts[joint_prob_query]
-    # TODO: Return the normalization of Q (divide by the joint)
-    return Q
+    Q[joint_prob_query] = enumerate_all(vars=vars, e=e_x_i, cpts=cpts, bns=bns)
+    # Return the normalization of Q (take each value of Q and divide it by the sum of all the values).
+    q_norm = Q.copy()
+    for query, probabilty in Q.items():
+        q_norm[query] = probabilty / sum(Q.values())
+    return q_norm
 
 
 def enumerate_all(vars, e, cpts, bns):
@@ -253,7 +265,7 @@ def main(bayes_net, observations):
     prob_tables = bns.prob_tables.copy()
     X = 'HighCarValue'
     e = {'WorkingAirConditioner': True, 'GoodEngine': True}
-    print("Enumeration-Ask: P(HighCarValue): %f" % enumeration_ask(X=X, e=e, bn=bns, cpts=prob_tables, bns=bns))
+    print("Enumeration-Ask P(Query|Evidence): %s" % enumeration_ask(X=X, e=e, bn=bns, cpts=prob_tables, bns=bns))
 
 if __name__ == '__main__':
     bn_one_path = 'bn1.json'
