@@ -6,7 +6,6 @@ An implementation of a Bayesian Network for Programming Assignment Four.
 import pandas as pd
 import json
 import itertools
-from prog4.TopologicalSort import TopologicalSort
 
 __author__ = "Chris Campell"
 __version__ = "10/28/2017"
