@@ -238,7 +238,7 @@ def sort_direct_acyclic_graph(edge_list):
                 source_set.add(node_to)
     if len(edge_set) != 0 :
         raise IndexError # not a direct acyclic graph
-    else :
+    else:
         return node_list
 
 
@@ -252,7 +252,7 @@ def main(bayes_net, observations):
             if node not in prob_tables:
                 # The node is not already in the probability tables.
                 bns.prob_tables = bns.build_probability_table(node=node, observations=observations,
-                                                          probability_tables=prob_tables)
+                                                              probability_tables=prob_tables)
         else:
             # The node is the child of another node, it is dependent upon its parent.
             if node not in prob_tables:
@@ -261,11 +261,16 @@ def main(bayes_net, observations):
                 dependencies = bns.get_dependencies(node)
                 # Build the probability table for this node:
                 bns.prob_tables = bns.build_probability_table(node=node, observations=observations,
-                                                          dependencies=dependencies, probability_tables=prob_tables)
+                                                              dependencies=dependencies, probability_tables=prob_tables)
     prob_tables = bns.prob_tables.copy()
+    # return enumeration_ask(X=X, e=e, bn=bns, cpts=prob_tables, bns=bns)
     X = 'HighCarValue'
     e = {'WorkingAirConditioner': True, 'GoodEngine': True}
+    e = {'GoodEngine': True, 'WorkingAirConditioner': False}
+    e = {'GoodEngine': False, 'WorkingAirConditioner': True}
+    e = {'GoodEngine': False, 'WorkingAirConditioner': False}
     print("Enumeration-Ask P(Query|Evidence): %s" % enumeration_ask(X=X, e=e, bn=bns, cpts=prob_tables, bns=bns))
+
 
 if __name__ == '__main__':
     bn_one_path = 'bn1.json'
