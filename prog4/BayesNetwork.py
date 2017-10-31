@@ -190,17 +190,36 @@ class BayesNetwork:
             # Build a query for the CPT
             # Sum up over every possible value for Y=y given Y's parents in e:
             # If Y = High Car Value then we want sum(P(HCV|GE,AC)) for all values in the truth table.
-            conditional_probs = []
             # For every possible value that Y can be (e.g. Y=y_i):
-            conditional_probs = {'P(%s=True)' % Y: None, 'P(%s=False)' % Y: None}
+            conditional_probs = {}
             y_i = True
             e_y_i = e.copy()
             e_y_i[Y] = y_i
-            conditional_probs['P(%s=%s)' % (Y,y_i)] = self.enumerate_all(rest,e_y_i,cpts)
+            # Get the parents of the query variable:
+            parents = self.get_parents(Y)
+            if parents:
+                query = 'P(%s=%s|' % (Y,y_i)
+                for evidence, assignment in e.items():
+                    if evidence in parents:
+                        query = query + '%s=%s,' % (evidence, assignment)
+                query = query[0:-1] + ')'
+            else:
+                query = 'P(%s=%s)' % (Y,y_i)
+            prob_Y_is_y = cpts[query]
+            conditional_probs[query] = prob_Y_is_y * self.enumerate_all(rest,e_y_i,cpts)
             y_i = False
+            if parents:
+                query = 'P(%s=%s|' % (Y,y_i)
+                for evidence, assignment in e.items():
+                    if evidence in parents:
+                        query = query + '%s=%s,' % (evidence, assignment)
+                query = query[0:-1] + ')'
+            else:
+                query = 'P(%s=%s)' % (Y,y_i)
             e_y_i[Y] = y_i
-            conditional_probs['P(%s=%s)' % (Y,y_i)] = self.enumerate_all(rest,e_y_i,cpts)
-        return sum(conditional_probs.values())
+            prob_Y_is_y = cpts[query]
+            conditional_probs[query] = prob_Y_is_y * self.enumerate_all(rest,e_y_i,cpts)
+            return conditional_probs
 
 
 def sort_direct_acyclic_graph(edge_list):
@@ -294,31 +313,67 @@ if __name__ == '__main__':
         bayes_net_topology_two[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
     bayes_net_classifier = train_bayes_network_classifier(bayes_network_topology=bayes_net_topology_one,
                                                           observations=observations_one)
+    # Sort vars in topological order:
+    edge_list = []
+    for parent, child_list in bayes_net_classifier.bayes_network.items():
+        for child in child_list:
+            edge_list.append([parent, child])
+    # Assign topological ordering to Bayes Network Instance:
+    vars = sort_direct_acyclic_graph(edge_list=edge_list)
+    bayes_net_classifier.vars = vars
+    # Prompt user for input and answer any queries:
     keyboard_interrupt = False
     while not keyboard_interrupt:
         user_query_verbatim = input("Enter a Query for the Network of the form P(Query={True,False}|{Evidence}):")
         # user_query_var = user_query[user_query.index('(')+1:user_query.index('=')]
         user_query = user_query_verbatim[2:-1]
+        query_type = None
+        # Determine the type of query:
+        if '|' in user_query_verbatim:
+            query_type = 'conditional'
+        else:
+            if user_query_verbatim.count('=') == 1:
+                query_type = 'singular'
+            else:
+                query_type = 'joint'
+        # Extract the variables from the query:
         user_query_vars = {}
         user_evidence_vars = {}
-        if '|' in user_query:
-            # Conditional probability. Split upto the |:
+        if query_type == 'conditional':
+            query_vars = user_query[0:user_query.find('|')]
             user_evidence = user_query[user_query.find('|')+1:]
+            user_query_list= query_vars.split(',')
+            user_query_list = [query.split('=') for query in user_query_list]
+            for var in user_query_list:
+                user_query_vars[var[0]] = var[1] == 'True'
+            user_evidence_list = user_evidence.split(',')
+            user_evidence_list = [obs.split('=') for obs in user_evidence_list]
+            for var in user_evidence_list:
+                user_evidence_vars[var[0]] = var[1] == 'True'
+            print("Enumeration-Ask P(Query|Evidence): %s"
+                  % bayes_net_classifier.enumeration_ask(X=user_query_vars,
+                                                         e=user_evidence_vars, cpts=bayes_net_classifier.prob_tables))
+        elif query_type == 'joint':
+            # There is no query variable:
+            user_query_vars = None
+            user_evidence_list = user_query.split(',')
+            user_evidence_list = [obs.split('=') for obs in user_evidence_list]
+            for var in user_evidence_list:
+                user_evidence_vars[var[0]] = var[1] == 'True'
+            print("Enumerate-All P({Evidence={True,False}}): %s"
+                  % bayes_net_classifier.enumerate_all(vars=bayes_net_classifier.vars, e=user_evidence_vars,
+                                                       cpts=bayes_net_classifier.prob_tables))
+        elif query_type == 'singular':
+            # There is no evidence variable:
+            user_evidence_vars = None
+            user_query_list = user_query.split('=')
+            user_query_vars[user_query_list[0]] = user_query_list[1] == 'True'
+            print("Enumerate-All P(Evidence={True,False}): %s"
+                  % bayes_net_classifier.enumerate_all(vars=bayes_net_classifier.vars,
+                                                       e={}, cpts=bayes_net_classifier.prob_tables))
         else:
-            # Joint probability, query variable is the first one, all others are evidence.
-            user_query = user_query.split(',')
-            query_var = user_query[0].split('=')
-            if query_var[1] == 'True':
-                user_query_vars[query_var[0]] = True
-            else:
-                user_query_vars[query_var[0]] = False
-            user_evidence = user_query[1:]
-            for evidence in user_evidence:
-                evidence_var = evidence.split('=')
-                if evidence_var[1] == 'True':
-                    user_evidence_vars[evidence_var[0]] = True
-                else:
-                    user_evidence_vars[evidence_var[0]] = False
-        print("Enumeration-Ask P(Query|Evidence): %s"
-              % bayes_net_classifier.enumeration_ask(X=user_query_vars, e=user_evidence_vars,
-                                                     cpts=bayes_net_classifier.prob_tables))
+            print("The input query %s is malformed. Expected a query of type {joint,conditional,singular}"
+                  % user_query_verbatim)
+            exit(-1)
+
+
