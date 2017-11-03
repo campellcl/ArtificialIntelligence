@@ -354,6 +354,7 @@ def get_parents(bayes_net_topology, node):
                 parents.append(parent)
         return parents
 
+
 def enumerate_all(variables, e, bn):
     """
     enumerate_all: Helper method for enumeration_ask, computes the joint probability distribution of the provided
@@ -420,9 +421,13 @@ def enumerate_all(variables, e, bn):
         logical_query[0] = 0
         y_i = False
         e_y_i[Y] = y_i
-        prob_Y_is_y2 = bn.cpts[cpts_query][logical_query]
+        prob_Y_is_y2 = bn.cpts[cpts_query]
+        if len(logical_query) > 1:
+            prob_Y_is_y2 = bn.cpts[cpts_query][tuple(logical_query)]
+        else:
+            prob_Y_is_y2 = prob_Y_is_y2[logical_query[0]]
         prob_Y_is_false = prob_Y_is_y2 * enumerate_all(variables=rest, e=e_y_i, bn=bn)
-        return sum(prob_Y_is_true, prob_Y_is_false)
+        return sum([prob_Y_is_true, prob_Y_is_false])
 
 if __name__ == '__main__':
     bn_one_path = 'bn1.json'
