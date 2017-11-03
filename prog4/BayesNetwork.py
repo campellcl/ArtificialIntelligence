@@ -328,7 +328,7 @@ def enumerate_all(variables, e, bn):
                 if evidence in parents:
                     # Y is assigned a value in e.
                     cpts_query = cpts_query + evidence + ','
-                    logical_query.append(assignment)
+                    logical_query.append(1 if assignment is True else 0)
             cpts_query = cpts_query[0:-1]
         prob_Y_is_y = bn.cpts[cpts_query]
         if len(logical_query) > 1:
@@ -351,7 +351,7 @@ def enumerate_all(variables, e, bn):
             for evidence, assignment in e.items():
                 if evidence in parents:
                     cpts_query = cpts_query + evidence + ','
-                    logical_query.append(assignment)
+                    logical_query.append(1 if assignment is True else 0)
             cpts_query = cpts_query[0:-1]
         prob_Y_is_y = bn.cpts[cpts_query]
         if len(logical_query) > 1:
@@ -402,7 +402,7 @@ if __name__ == '__main__':
         for child in child_list:
             edge_list.append([parent, child])
     # Assign topological ordering to Bayes Network Instance:
-    bns.bns_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+    bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
     # Prompt user for input and answer any queries:
     keyboard_interrupt = False
     while not keyboard_interrupt:
@@ -432,8 +432,13 @@ if __name__ == '__main__':
             user_evidence_list = [obs.split('=') for obs in user_evidence_list]
             for var in user_evidence_list:
                 user_evidence_vars[var[0]] = var[1] == 'True'
+            distribution = enumeration_ask(X=user_query_vars, e=user_evidence_vars, bn=bns)
+            if len(user_query_vars) > 1:
+                print("NotImplementedError")
+            else:
+                x = 1 if list(user_query_vars.values())[0] is True else 0
             print("Enumeration-Ask %s: %s"
-                  % (user_query_verbatim, enumeration_ask(X=user_query_vars, e=user_evidence_vars, bn=bns)))
+                  % (user_query_verbatim, distribution[x]))
         elif query_type == 'joint':
             # There is no query variable:
             user_query_vars = None
@@ -442,14 +447,15 @@ if __name__ == '__main__':
             for var in user_evidence_list:
                 user_evidence_vars[var[0]] = var[1] == 'True'
             print("Enumerate-All %s): %s"
-                  % (user_query_verbatim, enumerate_all(variables=bns.bns_vars,e=user_evidence_vars, bn=bns)))
+                  % (user_query_verbatim, enumerate_all(variables=bns.bn_vars,e=user_evidence_vars, bn=bns)))
         elif query_type == 'singular':
             # There is no evidence variable:
             user_evidence_vars = None
             user_query_list = user_query.split('=')
             user_query_vars[user_query_list[0]] = user_query_list[1] == 'True'
-            print("Enumerate-All %s): %s"
-                  % (user_query_verbatim, enumerate_all(variables=bns.bns_vars, e={}, bn=bns)))
+            X = list(user_query_vars.values())[0]
+            print("Enumeration-Ask %s): %s"
+                  % (user_query_verbatim, enumeration_ask(X=X, e=user_evidence_vars, bn=bns)))
         else:
             print("The input query %s is malformed. Expected a query of type {joint,conditional,singular}"
                   % user_query_verbatim)
