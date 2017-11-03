@@ -6,6 +6,7 @@ An implementation of a Bayesian Network for Programming Assignment Four.
 import pandas as pd
 import json
 import itertools
+import numpy as np
 
 __author__ = "Chris Campell"
 __version__ = "10/28/2017"
@@ -14,51 +15,26 @@ prob_tables = None
 
 
 class BayesNetwork:
-    bayes_network = None
-    prob_tables = None
+    topology = None
+    observations = None
+    cpts = None
 
-    def __init__(self, bayes_network):
-        self.bayes_network = bayes_network
+    def __init__(self, bayes_net_topology, observations, cpts=None):
+        self.topology = bayes_net_topology
+        self.observations = observations
+        if cpts is not None:
+            self.cpts = cpts
 
-    def get_parents(self, node):
-        parents = []
-        for parent, child_list in self.bayes_network.items():
-            if node in child_list:
-                parents.append(parent)
-        return parents
 
-    def is_independent(self, node):
-        """
-        is_independent: Returns True if the node is an independent node in the Bayesian Network.
-        :param node: The node for which to determine dependency.
-        :param bayes_net: The topology of the Bayesian Network.
-        :return boolean: True if the node is independent as specified in the topology of the Bayesian Network;
-            False otherwise.
-        """
-        for parent, child_list in self.bayes_network.items():
-            if node in child_list:
-                # The node is a child of another node, it is dependent.
-                return False
-        # The node is not a child of another node, it is independent.
-        return True
 
-    def get_dependencies(self, node):
-        """
-        get_dependencies: Returns the nodes that the provided node is conditionally dependent upon.
-        :param node: The node to calculate dependencies for.
-        :param bayes_net: The topology of the Bayesian Network.
-        :return dependencies: A list of nodes that the provided node is dependent upon. Returns None if the provided node
-            is independent.
-        """
-        if self.is_independent(node=node):
-            # If the node is independent, it has no dependencies:
-            return None
-        dependencies = []
-        for parent, child_list in self.bayes_network.items():
-            if node in child_list:
-                # The node is a child of another node, it is dependent.
-                dependencies.append(parent)
-        return dependencies
+
+
+
+
+
+
+
+
 
     def build_probability_table(self, node, observations, probability_tables=None, dependencies=None):
         if dependencies is None or dependencies is False:
@@ -221,6 +197,99 @@ class BayesNetwork:
             conditional_probs[query] = prob_Y_is_y * self.enumerate_all(rest,e_y_i,cpts)
             return conditional_probs
 
+def is_independent(bayes_net_topology, node):
+    """
+    is_independent: Returns True if the node is an independent node in the Bayesian Network.
+    :param node: The node for which to determine dependency.
+    :param bayes_net: The topology of the Bayesian Network.
+    :return boolean: True if the node is independent as specified in the topology of the Bayesian Network;
+        False otherwise.
+    """
+    for parent, child_list in bayes_net_topology.items():
+        if node in child_list:
+            # The node is a child of another node, it is dependent.
+            return False
+    # The node is not a child of another node, it is independent.
+    return True
+
+
+def get_dependencies(bayes_net_topology, node):
+    """
+    get_dependencies: Returns the nodes that the provided node is conditionally dependent upon.
+    :param node: The node to calculate dependencies for.
+    :param bayes_net: The topology of the Bayesian Network.
+    :return dependencies: A list of nodes that the provided node is dependent upon. Returns None if the provided node
+        is independent.
+    """
+    if is_independent(bayes_net_topology=bayes_net_topology, node=node):
+        # If the node is independent, it has no dependencies:
+        return None
+    dependencies = []
+    for parent, child_list in bayes_net_topology.items():
+        if node in child_list:
+            # The node is a child of another node, it is dependent.
+            dependencies.append(parent)
+    return dependencies
+
+
+def build_conditional_probability_tables(observations, node, dependencies=None):
+    if dependencies is None or dependencies is False:
+        # Calculate the probability of the independent variable given the observations:
+        num_true = observations[node].value_counts()[True]
+        total_num_obs = len(observations[node])
+        probability_true = (num_true / total_num_obs)
+        # P(Indpendent) = [F, T]
+        return [1 - probability_true, probability_true]
+    else:
+        # The variable is conditionally dependent, construct the CPT:
+        dim_prob_tables = tuple([2 for i in range(len(dependencies) + 1)])
+        cpt = np.ndarray(dim_prob_tables)
+        cpt[:] = np.NaN
+        # Construct a list of columns to query the df of observations with:
+        observation_subset_cols = []
+        observation_subset_cols.append(node)
+        observation_subset_cols = observation_subset_cols + dependencies
+        # Subset the observations by the dependent variables:
+        observation_subset = observations[observation_subset_cols]
+        # Create a truth table to iterate over every possible combination of the query variable and its dependencies:
+        truth_table = list(itertools.product([False, True], repeat=len(dependencies) + 1))
+        for permutation in truth_table:
+            df_query_with_node = ''
+            df_query_without_node = ''
+            for i in range(len(permutation)):
+                if i != 0:
+                    df_query_without_node = df_query_without_node + "%s == %s & " % (observation_subset_cols[i], permutation[i])
+                df_query_with_node = df_query_with_node + "%s == %s & " %(observation_subset_cols[i], permutation[i])
+            df_query_with_node = df_query_with_node[0:-3]
+            df_query_without_node = df_query_without_node[0:-3]
+            # query the observation subset:
+            num_observed = observation_subset.query(df_query_with_node).count()[0]
+            num_total_subset = observation_subset.query(df_query_without_node).count()[0]
+            cpt[permutation] = (num_observed / num_total_subset)
+    return cpt
+
+def _get_cpts(bayes_net_topology, observations):
+    dim_prob_tables = tuple([2 for i in range(len(bayes_net_topology))])
+    cpts = {}
+    for node in bayes_net_topology:
+        if is_independent(bayes_net_topology, node):
+            # The node has no parent, it is independent.
+            if node not in cpts:
+                # The node is not already in the CPTs:
+                cpts[node] = build_conditional_probability_tables(observations=observations, node=node)
+        else:
+            # The node is the child of another node, it is dependent upon its parent.
+            if node not in cpts:
+                # The node is not already in the probability tables.
+                # Get the nodes that the current node is conditionally dependent upon:
+                dependencies = get_dependencies(bayes_net_topology=bayes_net_topology, node=node)
+                # Build the probability table for this node:
+                cpt_name = node + '|'
+                for dependency in dependencies:
+                    cpt_name  = cpt_name + dependency + ','
+                cpt_name = cpt_name[0:-1]
+                cpts[cpt_name] = build_conditional_probability_tables(node=node, observations=observations, dependencies=dependencies)
+    return cpts
 
 def sort_direct_acyclic_graph(edge_list):
     """
@@ -259,8 +328,7 @@ def sort_direct_acyclic_graph(edge_list):
 
 def train_bayes_network_classifier(bayes_network_topology, observations):
     """ build the conditional probability tables """
-    prob_tables = {}
-    bns = BayesNetwork(bayes_network_topology)
+
     for node in bns.bayes_network:
         if bns.is_independent(node):
             # The node has no parent, it is independent.
@@ -278,15 +346,83 @@ def train_bayes_network_classifier(bayes_network_topology, observations):
                 bns.prob_tables = bns.build_probability_table(node=node, observations=observations,
                                                               dependencies=dependencies, probability_tables=prob_tables)
     return bns
-    prob_tables = bns.prob_tables.copy()
-    # return enumeration_ask(X=X, e=e, bn=bns, cpts=prob_tables, bns=bns)
-    X = 'HighCarValue'
-    e = {'WorkingAirConditioner': True, 'GoodEngine': True}
-    e = {'GoodEngine': True, 'WorkingAirConditioner': False}
-    e = {'GoodEngine': False, 'WorkingAirConditioner': True}
-    e = {'GoodEngine': False, 'WorkingAirConditioner': False}
 
+def get_parents(bayes_net_topology, node):
+        parents = []
+        for parent, child_list in bayes_net_topology.items():
+            if node in child_list:
+                parents.append(parent)
+        return parents
 
+def enumerate_all(variables, e, bn):
+    """
+    enumerate_all: Helper method for enumeration_ask, computes the joint probability distribution of the provided
+        variables, given a set of observations.
+    :param vars: A list of input variables for which to construct the joint from.
+    :param e: A list of observations of the input variables which influence the joint distribution.
+    :param cpts: The conditional probability tables for the Bayesian Network.
+    :return joint_prob: The joint distribution of the provided 'vars' with the supplied observations 'e'.
+    """
+    result = None
+    if not variables:
+        return 1.0
+    # The provided list of evidence variables is not empty:
+    # Initially the query variable Y is just the first in the list of query variables.
+    Y = variables[0]
+    # The rest of the variables are everything but Y:
+    rest = variables.copy()
+    rest.remove(Y)
+    # Does the query variable Y have a known value in the observed evidence variables?
+    if Y in e.keys():
+        # The query variable Y=y as given in the observed evidence variables:
+        y = e[Y]
+        # Get the parents of the query variable:
+        parents = get_parents(bn.topology, Y)
+        cpts_query = Y
+        logical_query = [1 if y is True else 0]
+        if parents:
+            cpts_query = cpts_query + '|'
+            for evidence, assignment in e.items():
+                if evidence in parents:
+                    # Y is assigned a value in e.
+                    cpts_query = cpts_query + evidence + ','
+                    logical_query.append(assignment)
+            cpts_query = cpts_query[0:-1]
+        prob_Y_is_y = bn.cpts[cpts_query]
+        if len(logical_query) > 1:
+            prob_Y_is_y = prob_Y_is_y[tuple(logical_query)]
+        else:
+            prob_Y_is_y = prob_Y_is_y[logical_query[0]]
+        return prob_Y_is_y * enumerate_all(variables=rest,e=e,bn=bn)
+    else:
+        # The query variable Y has no observed evidence (y):
+        # Build a query for the CPT
+        # Sum up over every possible value for Y=y given Y's parents in e:
+        y_i = True
+        e_y_i = e.copy()
+        e_y_i[Y] = y_i
+        cpts_query = Y
+        logical_query = [1 if y_i is True else 0]
+        parents = get_parents(bn.topology, Y)
+        if parents:
+            cpts_query = cpts_query + '|'
+            for evidence, assignment in e.items():
+                if evidence in parents:
+                    cpts_query = cpts_query + evidence + ','
+                    logical_query.append(assignment)
+            cpts_query = cpts_query[0:-1]
+        prob_Y_is_y = bn.cpts[cpts_query]
+        if len(logical_query) > 1:
+            prob_Y_is_y = prob_Y_is_y[tuple(logical_query)]
+        else:
+            prob_Y_is_y = prob_Y_is_y[logical_query[0]]
+        prob_Y_is_true = prob_Y_is_y * enumerate_all(variables=rest, e=e_y_i, bn=bn)
+        logical_query[0] = 0
+        y_i = False
+        e_y_i[Y] = y_i
+        prob_Y_is_y2 = bn.cpts[cpts_query][logical_query]
+        prob_Y_is_false = prob_Y_is_y2 * enumerate_all(variables=rest, e=e_y_i, bn=bn)
+        return sum(prob_Y_is_true, prob_Y_is_false)
 
 if __name__ == '__main__':
     bn_one_path = 'bn1.json'
@@ -311,16 +447,16 @@ if __name__ == '__main__':
     bayes_net_topology_two = {}
     for node, dependencies in bayes_net_two_with_spaces.items():
         bayes_net_topology_two[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
-    bayes_net_classifier = train_bayes_network_classifier(bayes_network_topology=bayes_net_topology_one,
-                                                          observations=observations_one)
-    # Sort vars in topological order:
+    # Initialize the Bayes Network with the observations data frame and the topology of the network.
+    bns = BayesNetwork(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
+    bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
+    # For convenience sake, store the bayes net variables in topographical ordering:
     edge_list = []
-    for parent, child_list in bayes_net_classifier.bayes_network.items():
+    for parent, child_list in bayes_net_topology_one.items():
         for child in child_list:
             edge_list.append([parent, child])
     # Assign topological ordering to Bayes Network Instance:
-    vars = sort_direct_acyclic_graph(edge_list=edge_list)
-    bayes_net_classifier.vars = vars
+    bns.bns_vars = sort_direct_acyclic_graph(edge_list=edge_list)
     # Prompt user for input and answer any queries:
     keyboard_interrupt = False
     while not keyboard_interrupt:
@@ -350,9 +486,12 @@ if __name__ == '__main__':
             user_evidence_list = [obs.split('=') for obs in user_evidence_list]
             for var in user_evidence_list:
                 user_evidence_vars[var[0]] = var[1] == 'True'
-            print("Enumeration-Ask P(Query|Evidence): %s"
-                  % bayes_net_classifier.enumeration_ask(X=user_query_vars,
-                                                         e=user_evidence_vars, cpts=bayes_net_classifier.prob_tables))
+            '''
+            print("Enumeration-Ask %s: %s"
+                  % (user_query_verbatim, enumeration_ask(X=user_query_vars,
+                                                         e=user_evidence_vars, cpts=bayes_net_classifier.prob_tables)))
+            '''
+            pass
         elif query_type == 'joint':
             # There is no query variable:
             user_query_vars = None
@@ -360,20 +499,16 @@ if __name__ == '__main__':
             user_evidence_list = [obs.split('=') for obs in user_evidence_list]
             for var in user_evidence_list:
                 user_evidence_vars[var[0]] = var[1] == 'True'
-            print("Enumerate-All P({Evidence={True,False}}): %s"
-                  % bayes_net_classifier.enumerate_all(vars=bayes_net_classifier.vars, e=user_evidence_vars,
-                                                       cpts=bayes_net_classifier.prob_tables))
+            print("Enumerate-All %s): %s"
+                  % (user_query_verbatim, enumerate_all(variables=bns.bns_vars,e=user_evidence_vars, bn=bns)))
         elif query_type == 'singular':
             # There is no evidence variable:
             user_evidence_vars = None
             user_query_list = user_query.split('=')
             user_query_vars[user_query_list[0]] = user_query_list[1] == 'True'
-            print("Enumerate-All P(Evidence={True,False}): %s"
-                  % bayes_net_classifier.enumerate_all(vars=bayes_net_classifier.vars,
-                                                       e={}, cpts=bayes_net_classifier.prob_tables))
+            print("Enumerate-All %s): %s"
+                  % (user_query_verbatim, enumerate_all(variables=bns.bns_vars, e={}, bn=bns)))
         else:
             print("The input query %s is malformed. Expected a query of type {joint,conditional,singular}"
                   % user_query_verbatim)
             exit(-1)
-
-
