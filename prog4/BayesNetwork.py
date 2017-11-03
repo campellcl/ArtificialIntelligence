@@ -18,23 +18,13 @@ class BayesNetwork:
     topology = None
     observations = None
     cpts = None
+    bn_vars = None
 
     def __init__(self, bayes_net_topology, observations, cpts=None):
         self.topology = bayes_net_topology
         self.observations = observations
         if cpts is not None:
             self.cpts = cpts
-
-
-
-
-
-
-
-
-
-
-
 
     def build_probability_table(self, node, observations, probability_tables=None, dependencies=None):
         if dependencies is None or dependencies is False:
@@ -125,77 +115,6 @@ class BayesNetwork:
             q_norm[query] = probabilty / sum(Q.values())
         return q_norm
 
-    def enumerate_all(self, vars, e, cpts):
-        """
-        enumerate_all: Helper method for enumeration_ask, computes the joint probability distribution of the provided
-            variables, given a set of observations.
-        :param vars: A list of input variables for which to construct the joint from.
-        :param e: A list of observations of the input variables which influence the joint distribution.
-        :param cpts: The conditional probability tables for the Bayesian Network.
-        :return joint_prob: The joint distribution of the provided 'vars' with the supplied observations 'e'.
-        """
-        joint_prob = None
-        if not vars:
-            # The provided list of evidence variables is empty, the probability is one.
-            joint_prob = 1.0
-            return joint_prob
-        # The provided list of evidence variables is not empty:
-        # Initially the query variable Y is just the first in the list of query variables.
-        Y = vars[0]
-        # The rest of the variables are everything but Y:
-        rest = vars.copy()
-        rest.remove(Y)
-        # Does the query variable Y have a known value in the observed evidence variables?
-        if Y in e.keys():
-            # The query variable Y=y as given in the observed evidence variables:
-            y = e[Y]
-            # Get the parents of the query variable:
-            parents = self.get_parents(Y)
-            if parents:
-                query = 'P(%s=%s|' % (Y,y)
-                for evidence, assignment in e.items():
-                    if evidence in parents:
-                        query = query + '%s=%s,' % (evidence, assignment)
-                query = query[0:-1] + ')'
-            else:
-                query = 'P(%s=%s)' % (Y,y)
-            prob_Y_is_y = cpts[query]
-            return prob_Y_is_y * self.enumerate_all(rest, e, cpts)
-        else:
-            # The query variable Y has no observed evidence (y):
-            # Build a query for the CPT
-            # Sum up over every possible value for Y=y given Y's parents in e:
-            # If Y = High Car Value then we want sum(P(HCV|GE,AC)) for all values in the truth table.
-            # For every possible value that Y can be (e.g. Y=y_i):
-            conditional_probs = {}
-            y_i = True
-            e_y_i = e.copy()
-            e_y_i[Y] = y_i
-            # Get the parents of the query variable:
-            parents = self.get_parents(Y)
-            if parents:
-                query = 'P(%s=%s|' % (Y,y_i)
-                for evidence, assignment in e.items():
-                    if evidence in parents:
-                        query = query + '%s=%s,' % (evidence, assignment)
-                query = query[0:-1] + ')'
-            else:
-                query = 'P(%s=%s)' % (Y,y_i)
-            prob_Y_is_y = cpts[query]
-            conditional_probs[query] = prob_Y_is_y * self.enumerate_all(rest,e_y_i,cpts)
-            y_i = False
-            if parents:
-                query = 'P(%s=%s|' % (Y,y_i)
-                for evidence, assignment in e.items():
-                    if evidence in parents:
-                        query = query + '%s=%s,' % (evidence, assignment)
-                query = query[0:-1] + ')'
-            else:
-                query = 'P(%s=%s)' % (Y,y_i)
-            e_y_i[Y] = y_i
-            prob_Y_is_y = cpts[query]
-            conditional_probs[query] = prob_Y_is_y * self.enumerate_all(rest,e_y_i,cpts)
-            return conditional_probs
 
 def is_independent(bayes_net_topology, node):
     """
@@ -268,6 +187,7 @@ def build_conditional_probability_tables(observations, node, dependencies=None):
             cpt[permutation] = (num_observed / num_total_subset)
     return cpt
 
+
 def _get_cpts(bayes_net_topology, observations):
     dim_prob_tables = tuple([2 for i in range(len(bayes_net_topology))])
     cpts = {}
@@ -290,6 +210,7 @@ def _get_cpts(bayes_net_topology, observations):
                 cpt_name = cpt_name[0:-1]
                 cpts[cpt_name] = build_conditional_probability_tables(node=node, observations=observations, dependencies=dependencies)
     return cpts
+
 
 def sort_direct_acyclic_graph(edge_list):
     """
@@ -325,28 +246,6 @@ def sort_direct_acyclic_graph(edge_list):
     else:
         return node_list
 
-
-def train_bayes_network_classifier(bayes_network_topology, observations):
-    """ build the conditional probability tables """
-
-    for node in bns.bayes_network:
-        if bns.is_independent(node):
-            # The node has no parent, it is independent.
-            if node not in prob_tables:
-                # The node is not already in the probability tables.
-                bns.prob_tables = bns.build_probability_table(node=node, observations=observations,
-                                                              probability_tables=prob_tables)
-        else:
-            # The node is the child of another node, it is dependent upon its parent.
-            if node not in prob_tables:
-                # The node is not already in the probability tables.
-                # Get the nodes that the current node is conditionally dependent upon:
-                dependencies = bns.get_dependencies(node)
-                # Build the probability table for this node:
-                bns.prob_tables = bns.build_probability_table(node=node, observations=observations,
-                                                              dependencies=dependencies, probability_tables=prob_tables)
-    return bns
-
 def get_parents(bayes_net_topology, node):
         parents = []
         for parent, child_list in bayes_net_topology.items():
@@ -354,6 +253,48 @@ def get_parents(bayes_net_topology, node):
                 parents.append(parent)
         return parents
 
+
+def enumeration_ask(X,e,bn):
+    """
+    enumeration_ask: Returns a probability distribution over X.
+    :param X: The query variable for which probabilities are to be inferred. For example HighCarValue.
+    :param e: The observed values for variables E. For example e:{GoodEngine:True, WorkingAC=False}
+    :param bn: A Bayesian Network with variables {X} union E union Y (hidden variables).
+    :return norm_dist_x: A normalized probability distribution over the query variable X.
+    """
+    if len(X) > 1:
+        return NotImplementedError
+    X = list(X.keys())[0]
+    # x_i can only be True or False, no need for a loop:
+    # Build keys based on evidence variable and query:
+    cpts_query = X + '|'
+    logical_query_true = [1]
+    logical_query_false = [0]
+    for evidence, assignment in e.items():
+        cpts_query = cpts_query + '%s,' % evidence
+        logical_query_true.append(1 if assignment == True else 0)
+        logical_query_false.append(1 if assignment == True else 0)
+    cpts_query = cpts_query[0:-1]
+    # Q = [P(Q=F|Evidence),P(Q=T|Evidence)]
+    Q = [None, None]
+    e_x_i = e.copy()
+    e_x_i[X] = True
+    joint_prob_query = X + '|'
+    joint_prob_logical_query_true = [1]
+    joint_prob_logical_query_false = [0]
+    for evidence, observation in e.items():
+        joint_prob_query = joint_prob_query + '%s,' % evidence
+        joint_prob_logical_query_true.append(1 if observation == 'True' else 0)
+        joint_prob_logical_query_false.append(1 if observation == 'True' else 0)
+    joint_prob_query = joint_prob_query[0:-1]
+    Q[1] = enumerate_all(variables=bn.bn_vars, e=e_x_i, bn=bn)
+    e_x_i[X] = False
+    Q[0] = enumerate_all(variables=bn.bn_vars, e=e_x_i, bn=bn)
+    # Return the normalization of Q (take each value of Q and divide it by the sum of all the values).
+    q_norm = Q.copy()
+    for truth_value, probabilty in enumerate(Q):
+        q_norm[truth_value] = probabilty / sum(Q)
+    return q_norm
 
 def enumerate_all(variables, e, bn):
     """
@@ -491,12 +432,8 @@ if __name__ == '__main__':
             user_evidence_list = [obs.split('=') for obs in user_evidence_list]
             for var in user_evidence_list:
                 user_evidence_vars[var[0]] = var[1] == 'True'
-            '''
             print("Enumeration-Ask %s: %s"
-                  % (user_query_verbatim, enumeration_ask(X=user_query_vars,
-                                                         e=user_evidence_vars, cpts=bayes_net_classifier.prob_tables)))
-            '''
-            pass
+                  % (user_query_verbatim, enumeration_ask(X=user_query_vars, e=user_evidence_vars, bn=bns)))
         elif query_type == 'joint':
             # There is no query variable:
             user_query_vars = None
