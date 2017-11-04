@@ -184,7 +184,8 @@ def build_conditional_probability_tables(observations, node, dependencies=None):
             # query the observation subset:
             num_observed = observation_subset.query(df_query_with_node).count()[0]
             num_total_subset = observation_subset.query(df_query_without_node).count()[0]
-            cpt[permutation] = (num_observed / num_total_subset)
+            logical_index = [1 if x is True else 0 for x in permutation]
+            cpt[tuple(logical_index)] = (num_observed / num_total_subset)
     return cpt
 
 
@@ -268,25 +269,11 @@ def enumeration_ask(X,e,bn):
     # x_i can only be True or False, no need for a loop:
     # Build keys based on evidence variable and query:
     cpts_query = X + '|'
-    logical_query_true = [1]
-    logical_query_false = [0]
-    for evidence, assignment in e.items():
-        cpts_query = cpts_query + '%s,' % evidence
-        logical_query_true.append(1 if assignment == True else 0)
-        logical_query_false.append(1 if assignment == True else 0)
-    cpts_query = cpts_query[0:-1]
+    logical_query = [1]
     # Q = [P(Q=F|Evidence),P(Q=T|Evidence)]
     Q = [None, None]
     e_x_i = e.copy()
     e_x_i[X] = True
-    joint_prob_query = X + '|'
-    joint_prob_logical_query_true = [1]
-    joint_prob_logical_query_false = [0]
-    for evidence, observation in e.items():
-        joint_prob_query = joint_prob_query + '%s,' % evidence
-        joint_prob_logical_query_true.append(1 if observation == 'True' else 0)
-        joint_prob_logical_query_false.append(1 if observation == 'True' else 0)
-    joint_prob_query = joint_prob_query[0:-1]
     Q[1] = enumerate_all(variables=bn.bn_vars, e=e_x_i, bn=bn)
     e_x_i[X] = False
     Q[0] = enumerate_all(variables=bn.bn_vars, e=e_x_i, bn=bn)
@@ -305,10 +292,9 @@ def enumerate_all(variables, e, bn):
     :param cpts: The conditional probability tables for the Bayesian Network.
     :return joint_prob: The joint distribution of the provided 'vars' with the supplied observations 'e'.
     """
-    result = None
     if not variables:
+        # Base case, return 1.0
         return 1.0
-    # The provided list of evidence variables is not empty:
     # Initially the query variable Y is just the first in the list of query variables.
     Y = variables[0]
     # The rest of the variables are everything but Y:
@@ -377,12 +363,16 @@ if __name__ == '__main__':
     observations_two_path = 'data2.csv'
     with open(bn_one_path, 'r') as fp:
         bayes_net_one_with_spaces = json.load(fp=fp)
+    del(bn_one_path)
     with open(bn_two_path, 'r') as fp:
         bayes_net_two_with_spaces = json.load(fp=fp)
+    del(bn_two_path)
     with open(observations_one_path, 'r') as fp:
         observations_one = pd.read_csv(fp)
+    del(observations_one_path)
     with open(observations_two_path, 'r') as fp:
         observations_two = pd.read_csv(fp)
+    del(observations_two_path)
     # Strip the spaces from the observations column headers:
     observations_one.columns = [x.replace(' ', '') for x in observations_one.columns]
     observations_two.columns = [x.replace(' ', '') for x in observations_two.columns]
@@ -390,9 +380,11 @@ if __name__ == '__main__':
     bayes_net_topology_one = {}
     for node, dependencies in bayes_net_one_with_spaces.items():
         bayes_net_topology_one[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
+    del(bayes_net_one_with_spaces)
     bayes_net_topology_two = {}
     for node, dependencies in bayes_net_two_with_spaces.items():
         bayes_net_topology_two[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
+    del(bayes_net_two_with_spaces)
     # Initialize the Bayes Network with the observations data frame and the topology of the network.
     bns = BayesNetwork(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
     bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
@@ -403,6 +395,7 @@ if __name__ == '__main__':
             edge_list.append([parent, child])
     # Assign topological ordering to Bayes Network Instance:
     bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+    del(bayes_net_topology_one)
     # Prompt user for input and answer any queries:
     keyboard_interrupt = False
     while not keyboard_interrupt:
@@ -453,10 +446,10 @@ if __name__ == '__main__':
             user_evidence_vars = None
             user_query_list = user_query.split('=')
             user_query_vars[user_query_list[0]] = user_query_list[1] == 'True'
-            X = list(user_query_vars.values())[0]
-            print("Enumeration-Ask %s): %s"
-                  % (user_query_verbatim, enumeration_ask(X=X, e=user_evidence_vars, bn=bns)))
+            print("Enumerate-All %s): %s"
+                  % (user_query_verbatim, enumerate_all(variables=bns.bn_vars, e=user_evidence_vars, bn=bns)))
         else:
-            print("The input query %s is malformed. Expected a query of type {joint,conditional,singular}"
+            print("The input query %s is malformed. Expected a query of type {joint,conditional,singular}; in the form"
+                  "P(Query|Evidence)"
                   % user_query_verbatim)
             exit(-1)
