@@ -6,6 +6,7 @@ Generates environments for the vacuum agent world.
 import numpy as np
 from copy import deepcopy
 from enum import Enum
+from collections import OrderedDict
 
 __author__ = "Chris Campell"
 __version__ = "9/3/2017"
@@ -81,8 +82,92 @@ class ReflexAgent:
         self.location = location
         self.performance_score = 0
 
+    def get_agent_quadrant_location(self):
+        quadrant = None
+        # Get which quadrant the agent is in:
+        if self.location[0] < 12 and self.location[0] > 7:
+            # The agent is in the bottom half of the map.
+            if self.location[1] < 4 and self.location[1] >=0:
+                # The agent is in the left-lower quadrant:
+                quadrant = 'Left-Lower'
+            elif self.location[1] < 12 and self.location[1] > 7:
+                # The agent is in the right-lower quadrant:
+                quadrant = 'Right-Lower'
+            else:
+                # The agent is not in a quadrant, but is in lower half of map.
+                quadrant = 'NA-Lower'
+        elif self.location[0] < 4 and self.location[0] >= 0:
+            # The agent is in the upper half of the map.
+            if self.location[1] < 4 and self.location[1] >=0:
+                # The agent is in the left-upper quadrant:
+                quadrant = 'Left-Upper'
+            elif self.location[1] < 12 and self.location[1] > 7:
+                # The agent is in the right-upper quadrant:
+                quadrant = 'Right-Upper'
+            else:
+                # Not in a quadrant, is in upper half of map.
+                quadrant = 'NA-Upper'
+        else:
+            print("Error, agent location not in any quadrant.")
+        return quadrant
+
+    def get_policy_for_target_loc(self, loc):
+        # Given the agents location and the desire to be at the provided loc, return the optimal move.
+        # Get the agents possible moves:
+        possible_moves = OrderedDict()
+        if self.environment.is_valid_action(action=Actions.MOVE_UP, location=self.location):
+            updated_loc = self.location
+            updated_loc = (updated_loc[0] - 1, updated_loc[1])
+            possible_moves[Actions.MOVE_UP] = updated_loc
+        if self.environment.is_valid_action(action=Actions.MOVE_RIGHT, location=self.location):
+            updated_loc = self.location
+            updated_loc = (updated_loc[0], updated_loc[1] + 1)
+            possible_moves[Actions.MOVE_RIGHT] = updated_loc
+        if self.environment.is_valid_action(action=Actions.MOVE_LEFT, location=self.location):
+            updated_loc = self.location
+            updated_loc = (updated_loc[0], updated_loc[1] - 1)
+            possible_moves[Actions.MOVE_LEFT] = updated_loc
+        if self.environment.is_valid_action(action=Actions.MOVE_DOWN, location=self.location):
+            updated_loc = self.location
+            updated_loc = (updated_loc[0] + 1, updated_loc[1])
+            possible_moves[Actions.MOVE_DOWN] = updated_loc
+        # minimize the distance between x and y.
+        delta_xs = OrderedDict()
+        delta_ys = OrderedDict()
+        arg_max_min_x = None
+        min_x = max('inf')
+        for action, new_loc in possible_moves.items():
+            # compute the distance between x and desired coord:
+            delta_x = abs(new_loc[0] - loc[0])
+            delta_xs[action] = delta_x
+            # minimize the distance between y and desired coord:
+            delta_y = abs(new_loc[1] - loc[1])
+            delta_ys[action] = delta_y
+        # Choose the action that minimizes the difference in x and y values:
+        return np.argmin((delta_xs))
+
+
     def move_direction(self):
         # Move using the current percepts only.
+        desired_move = None
+        # Determine which quadrant the agent is in:
+        agent_quadrant = self.get_agent_quadrant_location()
+        if agent_quadrant == 'Right-Upper':
+            desired_loc = (2,8)
+            move_policy = []
+            for i in range(desired_loc[0] - 0):
+                pass
+            move_policy = [(1,8),(0,8),(0,9),()]
+        elif agent_quadrant == 'Left-Upper':
+            desired_loc = (2,3)
+            move_policy = []
+            for i in range(desired_loc[0] - 0):
+                pass
+        elif agent_quadrant == 'Right-Lower':
+            desired_loc = (8,9)
+            get_policy_for_target_loc(desired_loc=desired_loc)
+        else:
+            desired_loc = (8,2)
         # Count the number of moveable squares in each direction:
         valid_agent_moves = {Actions.MOVE_UP: 0, Actions.MOVE_RIGHT: 0,
                              Actions.MOVE_DOWN: 0, Actions.MOVE_LEFT: 0}
