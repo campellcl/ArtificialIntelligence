@@ -1,0 +1,137 @@
+"""
+ObsidianWorld.py
+"""
+
+from collections import OrderedDict
+import numpy as np
+
+__author__ = "Chris Campell"
+__version__ = '11/6/2017'
+
+
+class ObsidianWorldMDP:
+    initial_state = None
+    terminal_states = None
+    states = None
+    edges = None
+    movement_cpts = None
+    gamma = None
+    # The number of states:
+    n = None
+    # The number of edges:
+    m = None
+    # The number of terminal states:
+    n_t = None
+
+    def __init__(self, initial_state, terminal_states, states, edges, movement_cpts, gamma):
+        """
+        __init__: Constructor for objects of type ObsidianWorld. Creates an obsidian world instance with data parsed
+            from the text file.
+        :param initial_state: The starting state.
+        :param terminal_states: The terminal states.
+        :param states: A list of all the states and their associated rewards.
+        :param edges: A list of all the directed edge connections.
+        :param movement_cpts: The conditional probability tables associated with movement in a stochastic environment.
+        :param gamma: The discount factor to penalize long action sequences.
+        """
+        self.initial_state = initial_state
+        self.terminal_states = terminal_states
+        self.states = states
+        self.edges = edges
+        self.movement_cpts = movement_cpts
+        self.gamma = gamma
+        # Set the number of states 'n':
+        self.n = len(states)
+        # Set the number of edges 'm':
+        self.m = len(edges)
+        # Set the number of terminal states 'n_t':
+        self.n_t = len(terminal_states)
+
+
+def parse_information(input_file):
+    world_info = {'initial_state': None, 'states': [], 'terminal_states': None, 'movement_cpts': {}, 'gamma': None, 'edges': {}}
+    with open(input_file, 'r') as fp:
+        input_file = fp.read()
+    input_text = input_file.split('\n')[:-1]
+    loop_locations = {}
+    for line_num, line in enumerate(input_text):
+        if line.isnumeric():
+            loop_start = line_num + 1
+            loop_end = line_num + int(line) + 1
+            loop_locations[len(loop_locations)] = [loop_start, loop_end]
+    for loop_id, loop_info in loop_locations.items():
+        if loop_id == 0:
+            # States loop:
+            for i in range(loop_info[0], loop_info[1]):
+                split_state_text = input_text[i].split(' ')
+                state = (split_state_text[0], int(split_state_text[1]))
+                world_info['states'].append(state)
+            # Get terminal states:
+            terminal_states_text = input_text[loop_info[1]].split(' ')
+            world_info['terminal_states'] = terminal_states_text
+        elif loop_id == 1:
+            # Movement cpts loop:
+            for i in range(loop_info[0], loop_info[1]):
+                split_cpt_dir = input_text[i].split(' ')
+                # The desired move is north (key one)
+                source_dir = split_cpt_dir[0]
+                # The value is the probability in ending up in key '{N,E,S,W}' given the source_dir:
+                world_info['movement_cpts'][source_dir] = {
+                    'N': float(split_cpt_dir[1]),
+                    'E': float(split_cpt_dir[2]),
+                    'S': float(split_cpt_dir[3]),
+                    'W': float(split_cpt_dir[4])
+                }
+        elif loop_id == 2:
+            # State edges loop:
+            for i in range(loop_info[0], loop_info[1]):
+                state_trans_pair = input_text[i].split(' ')
+                s = state_trans_pair[0]
+                action = state_trans_pair[1]
+                s_prime = state_trans_pair[2]
+                if s in world_info['edges']:
+                    world_info['edges'][s][action] = s_prime
+                else:
+                    world_info['edges'][s] = {}
+                    world_info['edges'][s][action] = s_prime
+        else:
+            print("Warning: This input loop is extraneous or does not exist.")
+    # Get the initial state (the last line)
+    world_info['initial_state'] = input_text[-1]
+    # Get gamma (the second to last line)
+    world_info['gamma'] = float(input_text[-2])
+    return world_info
+
+
+def value_iteration(mdp, epsilon):
+    return NotImplementedError
+    U = np.zeros(len(mdp.states))
+    U_prime = np.zeros(len(mdp.states))
+    delta = None
+    convergence = False
+    while not convergence:
+        U = U_prime.copy()
+        delta = 0
+        for i, (state, reward) in enumerate(mdp.states):
+            updated_util = 0
+            for action, s_prime in mdp.edges[state].items():
+                util_update = mdp.movement_cpts[state][s_prime]*U[s_prime]
+                updated_util += util_update
+            # U_prime[i] = reward + (mdp.gamma * np.argmax([]))
+            # val(a) = np.sum(mdp.edges[state][a])
+
+def main(input_file):
+    metadata = parse_information(input_file)
+    mdp = ObsidianWorldMDP(
+        initial_state=metadata['initial_state'],
+        terminal_states=metadata['terminal_states'],
+        states=metadata['states'],
+        edges=metadata['edges'],
+        movement_cpts=metadata['movement_cpts'],
+        gamma=metadata['gamma']
+    )
+    value_iteration(mdp=mdp, epsilon=10**-6)
+
+if __name__ == '__main__':
+    input_files = []
+    main(input_file='value_iteration/fig_17_3.txt')
