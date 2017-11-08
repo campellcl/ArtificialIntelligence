@@ -35,7 +35,12 @@ class ObsidianWorldMDP:
         :param gamma: The discount factor to penalize long action sequences.
         """
         self.initial_state = initial_state
-        self.terminal_states = terminal_states
+        self.terminal_states = []
+        # Keep track of the reward associated with each terminal state:
+        for term_state in terminal_states:
+            for state, reward in states:
+                if state == term_state:
+                    self.terminal_states.append((term_state, reward))
         self.states = states
         self.edges = edges
         self.movement_cpts = movement_cpts
@@ -108,7 +113,11 @@ def value_iteration(mdp, epsilon):
     # Get the number of rows
     num_rows = len(set([state[0] for state, reward in mdp.states]))
     num_cols = len(set([state[1] for state, reward in mdp.states]))
+    index_1d = lambda state : (((ord(state[0]) - 96) - 1) * num_cols) + (int(state[1]) - 1)
     U = np.zeros(len(mdp.states))
+    # Insert the utilities of the terminal states:
+    for state, reward in mdp.terminal_states:
+        U[index_1d(state)] = reward
     U_prime = np.zeros(len(mdp.states))
     delta = None
     converged = False
@@ -116,7 +125,6 @@ def value_iteration(mdp, epsilon):
         U = U_prime.copy()
         delta = 0
         for i, (state, reward) in enumerate(mdp.states):
-            index_1d = lambda state : (((ord(state[0]) - 96) - 1) * num_cols) + (int(state[1]) - 1)
             action_util_map = OrderedDict()
             for action, s_prime in mdp.edges[state].items():
                 # Compute P(s_prime|state,action)*U[s_prime]
