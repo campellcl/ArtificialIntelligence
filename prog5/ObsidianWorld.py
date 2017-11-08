@@ -104,21 +104,34 @@ def parse_information(input_file):
 
 
 def value_iteration(mdp, epsilon):
-    return NotImplementedError
+    # Build U:
+    # Get the number of rows
+    num_rows = len(set([state[0] for state, reward in mdp.states]))
+    num_cols = len(set([state[1] for state, reward in mdp.states]))
     U = np.zeros(len(mdp.states))
     U_prime = np.zeros(len(mdp.states))
     delta = None
-    convergence = False
-    while not convergence:
+    converged = False
+    while not converged:
         U = U_prime.copy()
         delta = 0
         for i, (state, reward) in enumerate(mdp.states):
-            updated_util = 0
+            index_1d = lambda state : (((ord(state[0]) - 96) - 1) * num_cols) + (int(state[1]) - 1)
+            action_util_map = OrderedDict()
             for action, s_prime in mdp.edges[state].items():
-                util_update = mdp.movement_cpts[state][s_prime]*U[s_prime]
-                updated_util += util_update
-            # U_prime[i] = reward + (mdp.gamma * np.argmax([]))
-            # val(a) = np.sum(mdp.edges[state][a])
+                # Compute P(s_prime|state,action)*U[s_prime]
+                # The row of an alphanumeric character is its ordinal position in the alphabet -1 (for zero based idx).
+                row = ((ord(s_prime[0]) - 96) - 1)
+                # The 1d index (i) of a pair (i,j) is row * num_cols + col_index
+                s_prime_1d_index = row * num_cols + int(s_prime[1]) - 1
+                action_util_map[action] = mdp.movement_cpts[action][action]*U[s_prime_1d_index]
+            # Perform utility update:
+            U_prime[index_1d(state)] = reward + (mdp.gamma * np.max(list(action_util_map.values())))
+            delta_update = np.abs(U_prime[index_1d(state)] - U[index_1d(state)])
+            if delta_update > delta:
+                delta = delta_update
+        if delta < epsilon(1 - mdp.gamma)/mdp.gamma:
+            converged = True
 
 def main(input_file):
     metadata = parse_information(input_file)
