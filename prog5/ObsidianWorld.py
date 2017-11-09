@@ -42,6 +42,10 @@ class ObsidianWorldMDP:
                 if state == term_state:
                     self.terminal_states.append((term_state, reward))
         self.states = states
+        # Maintain a list of non-terminal states:
+        self.nonterm_states = states.copy()
+        for term_state, reward in self.terminal_states:
+            self.nonterm_states.remove((term_state, reward))
         self.edges = edges
         self.movement_cpts = movement_cpts
         self.gamma = gamma
@@ -113,33 +117,32 @@ def value_iteration(mdp, epsilon):
     # Get the number of rows
     num_rows = len(set([state[0] for state, reward in mdp.states]))
     num_cols = len(set([state[1] for state, reward in mdp.states]))
-    index_1d = lambda state : (((ord(state[0]) - 96) - 1) * num_cols) + (int(state[1]) - 1)
-    U = np.zeros(len(mdp.states))
+    # index_1d = lambda state : (((ord(state[0]) - 96) - 1) * num_cols) + (int(state[1]) - 1)
+    U = {state: 0 for (state, reward) in mdp.states}
+    # U = np.zeros(len(mdp.states))
     # Insert the utilities of the terminal states:
-    for state, reward in mdp.terminal_states:
-        U[index_1d(state)] = reward
-    U_prime = np.zeros(len(mdp.states))
+    for term_state, reward in mdp.terminal_states:
+        U[term_state] = reward
+    U_prime = U.copy()
     delta = None
     converged = False
     while not converged:
         U = U_prime.copy()
-        delta = 0
+        delta = 0.0
         for i, (state, reward) in enumerate(mdp.states):
-            action_util_map = OrderedDict()
-            for action, s_prime in mdp.edges[state].items():
-                # Compute P(s_prime|state,action)*U[s_prime]
-                # The row of an alphanumeric character is its ordinal position in the alphabet -1 (for zero based idx).
-                row = ((ord(s_prime[0]) - 96) - 1)
-                # The 1d index (i) of a pair (i,j) is row * num_cols + col_index
-                s_prime_1d_index = row * num_cols + int(s_prime[1]) - 1
-                action_util_map[action] = mdp.movement_cpts[action][action]*U[s_prime_1d_index]
-            # Perform utility update:
-            U_prime[index_1d(state)] = reward + (mdp.gamma * np.max(list(action_util_map.values())))
-            delta_update = np.abs(U_prime[index_1d(state)] - U[index_1d(state)])
+            if state not in [state for state, reward in mdp.terminal_states]:
+                action_util_map = OrderedDict()
+                for action, s_prime in mdp.edges[state].items():
+                    # Compute P(s_prime|state,action)*U[s_prime]
+                    action_util_map[action] = mdp.movement_cpts[action][action]*U[s_prime]
+                # Perform utility update:
+                U_prime[state] = reward + (mdp.gamma * np.max(list(action_util_map.values())))
+            delta_update = np.abs(U_prime[state] - U[state])
             if delta_update > delta:
                 delta = delta_update
-        if delta < epsilon(1 - mdp.gamma)/mdp.gamma:
+        if delta <= epsilon*((1 - mdp.gamma)/mdp.gamma):
             converged = True
+    return U
 
 def main(input_file):
     metadata = parse_information(input_file)
@@ -151,7 +154,7 @@ def main(input_file):
         movement_cpts=metadata['movement_cpts'],
         gamma=metadata['gamma']
     )
-    value_iteration(mdp=mdp, epsilon=10**-6)
+    value_iteration(mdp=mdp, epsilon=10**-5)
 
 if __name__ == '__main__':
     input_files = []
