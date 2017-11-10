@@ -113,7 +113,6 @@ def parse_information(input_file):
     world_info['gamma'] = float(input_text[-2])
     return world_info
 
-
 def value_iteration(mdp, epsilon):
     # TODO: Topological sorting of graph from initial state? Edge wise traversal outward? Values converge incorrectly.
     # Perform value iteration beginning in the specified initial state:
@@ -134,12 +133,17 @@ def value_iteration(mdp, epsilon):
         # Perform value iteration from the specified start state:
         for i, (state, reward) in enumerate(mdp.states):
             if state not in [state for state, reward in mdp.terminal_states]:
-                action_util_map = OrderedDict()
-                for action, s_prime in mdp.edges[state].items():
-                    # Compute P(s_prime|state,action)*U[s_prime]
-                    action_util_map[action] = mdp.movement_cpts[action][action]*U[s_prime]
+                expected_utility = OrderedDict()
+                for desired_action, desired_s_prime in mdp.edges[state].items():
+                    # Where could we end up?
+                    remaining_states = mdp.edges[state].copy()
+                    remaining_states.pop(desired_action)
+                    expected_utility[desired_action] = mdp.movement_cpts[desired_action][desired_action]*U[desired_s_prime]
+                    for stochastic_action, stochastic_s_prime in remaining_states.items():
+                        expected_utility[desired_action] += mdp.movement_cpts[desired_action][stochastic_action]*U[stochastic_s_prime]
+                    # expected_utility[desired_action] = sum([prob_action*U[s_prime] for prob_action in mdp.movement_cpts[desired_action].values()])
                 # Perform utility update:
-                U_prime[state] = reward + (mdp.gamma * np.max(list(action_util_map.values())))
+                U_prime[state] = reward + (mdp.gamma * np.max(list(expected_utility.values())))
             delta_update = np.abs(U_prime[state] - U[state])
             if delta_update > delta:
                 delta = delta_update
