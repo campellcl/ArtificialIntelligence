@@ -34,7 +34,9 @@ class ObsidianWorldMDP:
         :param movement_cpts: The conditional probability tables associated with movement in a stochastic environment.
         :param gamma: The discount factor to penalize long action sequences.
         """
-        self.initial_state = initial_state
+        for state, reward in states:
+            if state == initial_state:
+                self.initial_state = (state, reward)
         self.terminal_states = []
         # Keep track of the reward associated with each terminal state:
         for term_state in terminal_states:
@@ -113,13 +115,13 @@ def parse_information(input_file):
 
 
 def value_iteration(mdp, epsilon):
-    # Build U:
-    # Get the number of rows
-    num_rows = len(set([state[0] for state, reward in mdp.states]))
-    num_cols = len(set([state[1] for state, reward in mdp.states]))
+    # TODO: Topological sorting of graph from initial state? Edge wise traversal outward? Values converge incorrectly.
+    # Perform value iteration beginning in the specified initial state:
+    start_state_index = mdp.states.index(mdp.initial_state)
+    swap_state_index = 0 if start_state_index != 0 else 1
+    mdp.states[swap_state_index], mdp.states[start_state_index] = mdp.states[start_state_index], mdp.states[swap_state_index]
     # index_1d = lambda state : (((ord(state[0]) - 96) - 1) * num_cols) + (int(state[1]) - 1)
     U = {state: 0 for (state, reward) in mdp.states}
-    # U = np.zeros(len(mdp.states))
     # Insert the utilities of the terminal states:
     for term_state, reward in mdp.terminal_states:
         U[term_state] = reward
@@ -129,6 +131,7 @@ def value_iteration(mdp, epsilon):
     while not converged:
         U = U_prime.copy()
         delta = 0.0
+        # Perform value iteration from the specified start state:
         for i, (state, reward) in enumerate(mdp.states):
             if state not in [state for state, reward in mdp.terminal_states]:
                 action_util_map = OrderedDict()
