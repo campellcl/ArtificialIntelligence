@@ -65,7 +65,7 @@ def parse_information(input_file):
     world_info = {'initial_state': None, 'states': [], 'terminal_states': None, 'movement_cpts': {}, 'gamma': None, 'edges': {}}
     with open(input_file, 'r') as fp:
         input_file = fp.read()
-    input_text = input_file.split('\n')[:-1]
+    input_text = input_file.split('\n')
     loop_locations = {}
     for line_num, line in enumerate(input_text):
         if line.isnumeric():
@@ -109,6 +109,8 @@ def parse_information(input_file):
                     world_info['edges'][s][action] = s_prime
         else:
             print("Warning: This input loop is extraneous or does not exist.")
+    if input_text[-1] == '':
+        input_text = input_text[:-1]
     # Get the initial state (the last line)
     world_info['initial_state'] = input_text[-1]
     # Get gamma (the second to last line)
@@ -197,9 +199,9 @@ def main(input_file):
                 if state not in [state for state, reward in mdp.terminal_states]:
                     utility = utilities[state]
                     policy = policies[state]
-                    fp.write('%s,%.2f,%s\n' % (state, utility, policy))
+                    fp.write('%s,%.3f,%s\n' % (state, utility, policy))
 
 
 if __name__ == '__main__':
-    input_files = []
-    main(input_file='value_iteration/fig_17_3.txt')
+    input_files = ['fig_17_3.txt', 'loser.txt', 'simple_g09_r0.txt', 'simple_g10_r1.txt', 'simple_g10_r3.txt', 'tunnel_a2_g10_r1.txt']
+    main(input_file='value_iteration/' + input_files[5])
