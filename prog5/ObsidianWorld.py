@@ -4,6 +4,8 @@ ObsidianWorld.py
 
 from collections import OrderedDict
 import numpy as np
+import sys
+from pathlib import Path
 
 __author__ = "Chris Campell"
 __version__ = '11/6/2017'
@@ -25,7 +27,7 @@ class ObsidianWorldMDP:
 
     def __init__(self, initial_state, terminal_states, states, edges, movement_cpts, gamma):
         """
-        __init__: Constructor for objects of type ObsidianWorld. Creates an obsidian world instance with data parsed
+        __init__: Constructor for objects of type ObsidianWorldMDP. Creates an obsidian world instance with data parsed
             from the text file.
         :param initial_state: The starting state.
         :param terminal_states: The terminal states.
@@ -113,43 +115,66 @@ def parse_information(input_file):
     world_info['gamma'] = float(input_text[-2])
     return world_info
 
+
 def value_iteration(mdp, epsilon):
-    # TODO: Topological sorting of graph from initial state? Edge wise traversal outward? Values converge incorrectly.
-    # Perform value iteration beginning in the specified initial state:
-    start_state_index = mdp.states.index(mdp.initial_state)
-    swap_state_index = 0 if start_state_index != 0 else 1
-    mdp.states[swap_state_index], mdp.states[start_state_index] = mdp.states[start_state_index], mdp.states[swap_state_index]
-    # index_1d = lambda state : (((ord(state[0]) - 96) - 1) * num_cols) + (int(state[1]) - 1)
     U = {state: 0 for (state, reward) in mdp.states}
     # Insert the utilities of the terminal states:
     for term_state, reward in mdp.terminal_states:
         U[term_state] = reward
+    # Create U' to hold the batch utility updates:
     U_prime = U.copy()
-    delta = None
+    # A boolean flag to determine convergence:
     converged = False
     while not converged:
         U = U_prime.copy()
         delta = 0.0
         # Perform value iteration from the specified start state:
         for i, (state, reward) in enumerate(mdp.states):
+            # If the state is a terminal state, its utility is pre-determined:
             if state not in [state for state, reward in mdp.terminal_states]:
+                # If the state is not a terminal state we need to calculate it's expected utility:
                 expected_utility = OrderedDict()
                 for desired_action, desired_s_prime in mdp.edges[state].items():
-                    # Where could we end up?
+                    # The desired action is the action the agent wishes to perform.
+                    # The desired s' is the state that the agent wishes to end up in.
                     remaining_states = mdp.edges[state].copy()
                     remaining_states.pop(desired_action)
+                    # Compute the expected utility of the desired action, given the stochastic probability of the
+                    #   desired action actually occurring:
                     expected_utility[desired_action] = mdp.movement_cpts[desired_action][desired_action]*U[desired_s_prime]
+                    # The expected utility of the desired action also depends on the stochastic probabilities of the
+                    #   agent ending up in any other reachable state:
                     for stochastic_action, stochastic_s_prime in remaining_states.items():
                         expected_utility[desired_action] += mdp.movement_cpts[desired_action][stochastic_action]*U[stochastic_s_prime]
-                    # expected_utility[desired_action] = sum([prob_action*U[s_prime] for prob_action in mdp.movement_cpts[desired_action].values()])
-                # Perform utility update:
+                # Perform the expected utility update:
                 U_prime[state] = reward + (mdp.gamma * np.max(list(expected_utility.values())))
+            # Calculate the change in utility for the current state:
             delta_update = np.abs(U_prime[state] - U[state])
+            # Update the maximum change in utility (delta):
             if delta_update > delta:
                 delta = delta_update
+        # Perform a check for convergence using epsilon as a tolerance:
         if delta <= epsilon*((1 - mdp.gamma)/mdp.gamma):
             converged = True
+    # Return the true (converged) utilities for each state:
     return U
+
+
+def compute_policy(utilities, mdp):
+    policy = {}
+    for state, util in utilities.items():
+        # Only compute the policy for non-terminal states:
+        if state not in [state for state, reward in mdp.terminal_states]:
+            # Compute the optimal policy based on adjacent utilities:
+            max_adj_util = -np.inf
+            best_action = None
+            for action, s_prime in mdp.edges[state].items():
+                if utilities[s_prime] >= max_adj_util:
+                    max_adj_util = utilities[s_prime]
+                    best_action = action
+            policy[state] = best_action
+    return policy
+
 
 def main(input_file):
     metadata = parse_information(input_file)
@@ -161,7 +186,19 @@ def main(input_file):
         movement_cpts=metadata['movement_cpts'],
         gamma=metadata['gamma']
     )
-    value_iteration(mdp=mdp, epsilon=10**-5)
+    utilities = value_iteration(mdp=mdp, epsilon=10**-5)
+    policies = compute_policy(utilities, mdp)
+    write_dest = 'solutions/' + input_file.split('/')[1].replace('.txt', '.csv')
+    write_path = Path(write_dest)
+    if not write_path.is_file():
+        with open(write_dest, 'w') as fp:
+            fp.write('State,Utility,Policy\n')
+            for state, reward in sorted(mdp.states):
+                if state not in [state for state, reward in mdp.terminal_states]:
+                    utility = utilities[state]
+                    policy = policies[state]
+                    fp.write('%s,%.2f,%s\n' % (state, utility, policy))
+
 
 if __name__ == '__main__':
     input_files = []
