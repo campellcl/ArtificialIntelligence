@@ -198,6 +198,13 @@ def expected_utilities(neighbors, utilities, trans_prob_tables):
 
 
 def compute_policy(utilities, mdp):
+    """
+    compute_policy: Given a converged list of states and utilities and a Markov Decision Process (MDP) instance,
+        calculates the optimal policy based on the expected_utility of every state.
+    :param utilities: The list of state, utility pairs.
+    :param mdp: An instance of a Markov Decision Process (MDP)
+    :return policy: The optimal policy given the calculated expected utilities of each state.
+    """
     policy = {}
     for state, util in utilities.items():
         # Only compute the policy for non-terminal states:
@@ -234,12 +241,20 @@ def main(input_file):
         with open(write_dest, 'w') as fp:
             fp.write('State,Utility,Policy\n')
             for state, reward in sorted(mdp.states):
+                utility = utilities[state]
                 if state not in [state for state, reward in mdp.terminal_states]:
-                    utility = utilities[state]
                     policy = policies[state]
                     fp.write('%s,%.3f,%s\n' % (state, utility, policy))
+                else:
+                    fp.write('%s,%.3f,\n' % (state, utility))
 
 
 if __name__ == '__main__':
-    input_files = ['fig_17_3.txt', 'loser.txt', 'simple_g09_r0.txt', 'simple_g10_r1.txt', 'simple_g10_r3.txt', 'tunnel_a2_g10_r1.txt']
-    main(input_file='value_iteration/' + input_files[0])
+    input_files = [
+        'fig_17_3.txt', 'loser.txt',
+        'simple_g09_r0.txt', 'simple_g10_r1.txt',
+        'simple_g10_r3.txt', 'tunnel_a2_g10_r1.txt',
+        'tunnel_a2_g10_r1.txt', 'tunnel_a4_g10_r1.txt'
+    ]
+    for input_file in input_files:
+        main(input_file='value_iteration/' + input_file)
