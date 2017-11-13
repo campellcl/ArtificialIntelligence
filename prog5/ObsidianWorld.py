@@ -162,17 +162,55 @@ def value_iteration(mdp, epsilon):
     return U
 
 
+def is_terminal_state(s, mdp):
+    """
+    is_terminal_state: Returns true if the provided state is a terminal state.
+    :param s: The state to check for finiteness.
+    :param mdp: The markov decision process instance.
+    :return boolean: True if the provided state is terminal, false otherwise.
+    """
+    return s in [state for state, reward in mdp.terminal_states]
+
+
+def expected_utilities(neighbors, utilities, trans_prob_tables):
+    """
+    expected_utilities: Computes the expected utility (the average utility value of the outcomes of the specified action
+        executed in the provided state, weighted by the probability that the action actually occurs) for every possible
+        action performed given the adjacent states and the stochastic transition probabilities.
+    :param neighbors: The adjacent states which factor into the expected utility calculation.
+    :param utilities: The actual utilities of the states in the state-space.
+    :param trans_prob_tables: The probability transition tables that define the probability associated with each action.
+    :return expected_utility: The expected utility for the provided action when executed at the provided state.
+    """
+    expected_utils = OrderedDict()
+    for desired_action, desired_s_prime in neighbors.items():
+        remaining_states = neighbors.copy()
+        remaining_states.pop(desired_action)
+        # Compute the expected utility of the desired action, given the stochastic probability of the
+        #   desired action actually occurring:
+        expected_utils[desired_action] = trans_prob_tables[desired_action][desired_action]*utilities[desired_s_prime]
+        # The expected utility of the desired action also depends on the stochastic probabilities of the
+        #   agent ending up in any other reachable state:
+        for stochastic_action, stochastic_s_prime in remaining_states.items():
+            expected_utils[desired_action] += \
+                trans_prob_tables[desired_action][stochastic_action]*utilities[stochastic_s_prime]
+    return expected_utils
+
+
 def compute_policy(utilities, mdp):
     policy = {}
     for state, util in utilities.items():
         # Only compute the policy for non-terminal states:
-        if state not in [state for state, reward in mdp.terminal_states]:
-            # Compute the optimal policy based on adjacent utilities:
-            max_adj_util = -np.inf
+        if not is_terminal_state(state, mdp):
+            # Since this state is a non-terminal state, its policy is its expected utility:
+            # Compute the expected utilities of all available actions:
+            expected_utils = expected_utilities(neighbors=mdp.edges[state],
+                                               utilities=utilities, trans_prob_tables=mdp.movement_cpts)
+            max_expected_util = -np.inf
             best_action = None
-            for action, s_prime in mdp.edges[state].items():
-                if utilities[s_prime] >= max_adj_util:
-                    max_adj_util = utilities[s_prime]
+            for action, expected_util in expected_utils.items():
+                if expected_util >= max_expected_util:
+                    max_expected_util = expected_util
                     best_action = action
             policy[state] = best_action
     return policy
@@ -204,4 +242,4 @@ def main(input_file):
 
 if __name__ == '__main__':
     input_files = ['fig_17_3.txt', 'loser.txt', 'simple_g09_r0.txt', 'simple_g10_r1.txt', 'simple_g10_r3.txt', 'tunnel_a2_g10_r1.txt']
-    main(input_file='value_iteration/' + input_files[5])
+    main(input_file='value_iteration/' + input_files[0])
