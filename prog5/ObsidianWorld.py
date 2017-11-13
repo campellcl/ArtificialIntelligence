@@ -254,7 +254,10 @@ if __name__ == '__main__':
         'fig_17_3.txt', 'loser.txt',
         'simple_g09_r0.txt', 'simple_g10_r1.txt',
         'simple_g10_r3.txt', 'tunnel_a2_g10_r1.txt',
-        'tunnel_a2_g10_r1.txt', 'tunnel_a4_g10_r1.txt'
+        'tunnel_a2_g10_r1.txt', 'tunnel_a4_g10_r1.txt',
+        'random_0.txt', 'random_1.txt',
+        'random_2.txt', 'random_3.txt',
+        'random_4.txt'
     ]
     for input_file in input_files:
         main(input_file='value_iteration/' + input_file)
