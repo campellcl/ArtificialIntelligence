@@ -409,8 +409,10 @@ if __name__ == '__main__':
         else:
             if user_query_verbatim.count('=') == 1:
                 query_type = 'singular'
-            else:
+            elif user_query_verbatim.count(',') > 0:
                 query_type = 'joint'
+            else:
+                print('ERROR: Input Query Malformed. Expected {\'P(A=True)\',\'P(A=False)\'}. Recieved: %s' % user_query_verbatim)
         # Extract the variables from the query:
         user_query_vars = {}
         user_evidence_vars = {}
@@ -446,11 +448,11 @@ if __name__ == '__main__':
             user_evidence_vars = None
             user_query_list = user_query.split('=')
             user_query_vars[user_query_list[0]] = user_query_list[1] == 'True'
-            #
+            # The evidence is the user's query.
             print("Enumerate-All %s): %s"
                   % (user_query_verbatim, enumerate_all(variables=bns.bn_vars, e=user_query_vars, bn=bns)))
         else:
             print("The input query %s is malformed. Expected a query of type {joint,conditional,singular}; in the form"
-                  "P(Query|Evidence)"
+                  " P(Query|Evidence)"
                   % user_query_verbatim)
             exit(-1)
