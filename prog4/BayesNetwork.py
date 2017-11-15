@@ -446,8 +446,9 @@ if __name__ == '__main__':
             user_evidence_vars = None
             user_query_list = user_query.split('=')
             user_query_vars[user_query_list[0]] = user_query_list[1] == 'True'
+            #
             print("Enumerate-All %s): %s"
-                  % (user_query_verbatim, enumerate_all(variables=bns.bn_vars, e=user_evidence_vars, bn=bns)))
+                  % (user_query_verbatim, enumerate_all(variables=bns.bn_vars, e=user_query_vars, bn=bns)))
         else:
             print("The input query %s is malformed. Expected a query of type {joint,conditional,singular}; in the form"
                   "P(Query|Evidence)"
