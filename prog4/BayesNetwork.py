@@ -418,18 +418,36 @@ if __name__ == '__main__':
         bayes_net_topology_two[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
     del(bayes_net_two_with_spaces)
     ''' Initialize the Bayesian Network '''
-    # Initialize the Bayes Network with the observations data frame and the topology of the network:
-    bns = BayesNetwork(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
-    # Instantiate the conditional probability tables associated with the network:
-    bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
-    # For convenience sake, store the bayes net variables in topographical ordering:
-    edge_list = []
-    for parent, child_list in bayes_net_topology_one.items():
-        for child in child_list:
-            edge_list.append([parent, child])
-    # Assign topological ordering to Bayes Network Instance:
-    bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
-    del(bayes_net_topology_one)
+    user_bns_verbatim = input("Select a Bayesian Network:\n\t"
+                              "(1): {HighMileage,GoodEngine,WorkingAirConditioner,HighCarValue}\n\t"
+                              "(2): {BadBattery,EmptyFuel,EmptyGauge,NoStart}\n")
+    if user_bns_verbatim == "1":
+        # Initialize the Bayes Network with the observations data frame and the topology of the network:
+        bns = BayesNetwork(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
+        # Instantiate the conditional probability tables associated with the network:
+        bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
+        # For convenience sake, store the bayes net variables in topographical ordering:
+        edge_list = []
+        for parent, child_list in bayes_net_topology_one.items():
+            for child in child_list:
+                edge_list.append([parent, child])
+        # Assign topological ordering to Bayes Network Instance:
+        bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+    elif user_bns_verbatim == "2":
+         # Initialize the Bayes Network with the observations data frame and the topology of the network:
+        bns = BayesNetwork(bayes_net_topology=bayes_net_topology_two, observations=observations_two)
+        # Instantiate the conditional probability tables associated with the network:
+        bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_two, observations=observations_two)
+        # For convenience sake, store the bayes net variables in topographical ordering:
+        edge_list = []
+        for parent, child_list in bayes_net_topology_two.items():
+            for child in child_list:
+                edge_list.append([parent, child])
+        # Assign topological ordering to Bayes Network Instance:
+        bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+    else:
+        print("Error: Malformed selection. Expected a BNS Id: {1,2}. User Provided: %s" % user_bns_verbatim)
+        exit(-1)
     # Prompt user for input and answer any queries:
     keyboard_interrupt = False
     while not keyboard_interrupt:
@@ -477,7 +495,7 @@ if __name__ == '__main__':
             for var in user_evidence_list:
                 user_evidence_vars[var[0]] = var[1] == 'True'
             print("Enumerate-All %s): %s"
-                  % (user_query_verbatim, enumerate_all(variables=bns.bn_vars,e=user_evidence_vars, bn=bns)))
+                  % (user_query_verbatim, enumerate_all(variables=bns.bn_vars, e=user_evidence_vars, bn=bns)))
         elif query_type == 'singular':
             # There is no evidence variable:
             user_evidence_vars = None
