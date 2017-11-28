@@ -478,6 +478,28 @@ def main():
         exit(-1)
 
 
+def logarithmic_likelihood(model, total_num_models, data):
+    prob_data_given_model = np.NaN
+    for m in range(total_num_models):
+        ''' Compute P(x_i|Model) '''
+        prob_sample_given_model = np.NaN
+        for i in range(len(data)):
+            df_series = data.loc[i]
+            evidence_vars = {}
+            for variable, assignment in df_series.items():
+                evidence_vars[variable] = assignment
+            if np.isnan(prob_sample_given_model):
+                prob_sample_given_model = enumerate_all(variables=model.bn_vars, e=evidence_vars, bn=model)
+            else:
+                prob_sample_given_model *= enumerate_all(variables=model.bn_vars, e=evidence_vars, bn=model)
+        if np.isnan(prob_sample_given_model):
+            prob_data_given_model = np.log(prob_sample_given_model)
+        else:
+            prob_data_given_model += np.log(prob_sample_given_model)
+    return prob_data_given_model
+
+
+
 if __name__ == '__main__':
     bns_topology = None
     observations = None
@@ -486,14 +508,29 @@ if __name__ == '__main__':
     observations_one_path = 'data1.csv'
     bn_two_path = 'bn2.json'
     observations_two_path = 'data2.csv'
+    model_one_path = 'model1.json'
+    model_two_path = 'model2.json'
+    model_three_path = 'model3.json'
+    obs_three_path = 'data3.csv'
+    obs_four_path = 'data4.csv'
+    obs_five_path = 'data5.csv'
     ''' Load Bayesian Network Topology and Empirical Observations '''
     user_bns_verbatim = input("Select a Bayesian Network:\n\t"
-                              "(1): {HighMileage,GoodEngine,WorkingAirConditioner,HighCarValue}\n\t"
-                              "(2): {BadBattery,EmptyFuel,EmptyGauge,NoStart}\n")
+                              "[1]: <bn1.json> {HighMileage,GoodEngine,WorkingAirConditioner,HighCarValue}\n\t"
+                              "[2]: <bn2.json> {BadBattery,EmptyFuel,EmptyGauge,NoStart}\n\t"
+                              "[3]: <model1.json> {A,B,C,D,E}\n\t"
+                              "[4]: <model2.json> {A,B,C,D,E}\n\t"
+                              "[5]: <model3.json> {A,B,C,D,E}\n")
     if user_bns_verbatim == "1":
         bns_topology, observations = import_data(bns_path=bn_one_path, observations_path=observations_one_path)
     elif user_bns_verbatim == "2":
         bns_topology, observations = import_data(bns_path=bn_two_path, observations_path=observations_two_path)
+    elif user_bns_verbatim == "3":
+        bns_topology, observations = import_data(bns_path=model_one_path, observations_path=obs_three_path)
+    elif user_bns_verbatim == "4":
+        bns_topology, observations = import_data(bns_path=model_two_path, observations_path=obs_four_path)
+    elif user_bns_verbatim == "5":
+        bns_topology, observations = import_data(bns_path=model_three_path, observations_path=obs_five_path)
     else:
         print("Error: Malformed selection. Expected a BNS Id: {1,2}. User Provided: %s" % user_bns_verbatim)
         exit(-1)
@@ -509,5 +546,9 @@ if __name__ == '__main__':
                 edge_list.append([parent, child])
     # Assign topological ordering to Bayes Network Instance:
     bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+    # Compute the log-likelihood of the data given the network:
+    print("Computing Log-Likelihood of Data %s given Bayesian Network Topology: %s with Observations: %s")
+    likelihood = logarithmic_likelihood(model=bns, total_num_models=3, data=observations)
+    print("Log-Likelihood: %.2f" % likelihood)
     # Perform queries on the Bayesian Network:
     main()
