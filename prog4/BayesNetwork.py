@@ -278,12 +278,19 @@ def sort_direct_acyclic_graph(edge_list):
     else:
         return node_list
 
+
 def get_parents(bayes_net_topology, node):
-        parents = []
-        for parent, child_list in bayes_net_topology.items():
-            if node in child_list:
-                parents.append(parent)
-        return parents
+    """
+    get_parents: Returns the topological parents of the provided Bayesian node.
+    :param bayes_net_topology: The topology of the Bayesian netowrk provided during instantiation.
+    :param node: The node for which parents are to be determined.
+    :return parents: A list of the parents of the provided node (if any exist); otherwise an empty list.
+    """
+    parents = []
+    for parent, child_list in bayes_net_topology.items():
+        if node in child_list:
+            parents.append(parent)
+    return parents
 
 
 def enumeration_ask(X,e,bn):
@@ -313,6 +320,7 @@ def enumeration_ask(X,e,bn):
     for truth_value, probabilty in enumerate(Q):
         q_norm[truth_value] = probabilty / sum(Q)
     return q_norm
+
 
 def enumerate_all(variables, e, bn):
     """
@@ -387,67 +395,58 @@ def enumerate_all(variables, e, bn):
         prob_Y_is_false = prob_Y_is_y2 * enumerate_all(variables=rest, e=e_y_i, bn=bn)
         return sum([prob_Y_is_true, prob_Y_is_false])
 
+
+def import_data(bns_path, observations_path):
+    """
+    import_data: Loads the provided topology and observations into memory.
+    :param bns_path: The path to a file containing the topology of the Bayesian network.
+    :param observations_path: The path to a file containing the observations associated with the Bayesian network.
+    :return bns_topology, observations: The topology of the Bayesian network (sorted in topographical order) and the
+        associated observations.
+    """
+    with open(bns_path, 'r') as fp:
+        bns_with_spaces = json.load(fp=fp)
+    with open(observations_path, 'r') as fp:
+        observations = pd.read_csv(fp)
+    # Strip the spaces from the observations column headers:
+    observations.columns = [_.replace(' ', '') for _ in observations.columns]
+    # Strip the spaces from the bayes network node names:
+    bns_topology = {}
+    for node, dependencies in bns_with_spaces.items():
+        bns_topology[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
+    return bns_topology, observations
+
+
 if __name__ == '__main__':
+    bns_topology = None
+    observations = None
     ''' Perform Initial Setup and Read in Network Topology and Observations '''
     bn_one_path = 'bn1.json'
     observations_one_path = 'data1.csv'
     bn_two_path = 'bn2.json'
     observations_two_path = 'data2.csv'
-    with open(bn_one_path, 'r') as fp:
-        bayes_net_one_with_spaces = json.load(fp=fp)
-    del(bn_one_path)
-    with open(bn_two_path, 'r') as fp:
-        bayes_net_two_with_spaces = json.load(fp=fp)
-    del(bn_two_path)
-    with open(observations_one_path, 'r') as fp:
-        observations_one = pd.read_csv(fp)
-    del(observations_one_path)
-    with open(observations_two_path, 'r') as fp:
-        observations_two = pd.read_csv(fp)
-    del(observations_two_path)
-    # Strip the spaces from the observations column headers:
-    observations_one.columns = [x.replace(' ', '') for x in observations_one.columns]
-    observations_two.columns = [x.replace(' ', '') for x in observations_two.columns]
-    # Strip spaces from bayes network topology for consistency:
-    bayes_net_topology_one = {}
-    for node, dependencies in bayes_net_one_with_spaces.items():
-        bayes_net_topology_one[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
-    del(bayes_net_one_with_spaces)
-    bayes_net_topology_two = {}
-    for node, dependencies in bayes_net_two_with_spaces.items():
-        bayes_net_topology_two[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
-    del(bayes_net_two_with_spaces)
     ''' Initialize the Bayesian Network '''
     user_bns_verbatim = input("Select a Bayesian Network:\n\t"
                               "(1): {HighMileage,GoodEngine,WorkingAirConditioner,HighCarValue}\n\t"
                               "(2): {BadBattery,EmptyFuel,EmptyGauge,NoStart}\n")
     if user_bns_verbatim == "1":
-        # Initialize the Bayes Network with the observations data frame and the topology of the network:
-        bns = BayesNetwork(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
-        # Instantiate the conditional probability tables associated with the network:
-        bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
-        # For convenience sake, store the bayes net variables in topographical ordering:
-        edge_list = []
-        for parent, child_list in bayes_net_topology_one.items():
-            for child in child_list:
-                edge_list.append([parent, child])
-        # Assign topological ordering to Bayes Network Instance:
-        bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+        bns_topology, observations = import_data(bns_path=bn_one_path, observations_path=observations_one_path)
     elif user_bns_verbatim == "2":
-         # Initialize the Bayes Network with the observations data frame and the topology of the network:
-        bns = BayesNetwork(bayes_net_topology=bayes_net_topology_two, observations=observations_two)
-        # Instantiate the conditional probability tables associated with the network:
-        bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_two, observations=observations_two)
-        # For convenience sake, store the bayes net variables in topographical ordering:
-        edge_list = []
-        for parent, child_list in bayes_net_topology_two.items():
-            for child in child_list:
-                edge_list.append([parent, child])
-        # Assign topological ordering to Bayes Network Instance:
-        bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+        bns_topology, observations = import_data(bns_path=bn_two_path, observations_path=observations_two_path)
     else:
         print("Error: Malformed selection. Expected a BNS Id: {1,2}. User Provided: %s" % user_bns_verbatim)
         exit(-1)
+    # Initialize the Bayes Network with the observations data frame and the topology of the network:
+    bns = BayesNetwork(bayes_net_topology=bns_topology, observations=observations)
+    # Instantiate the conditional probability tables associated with the network:
+    bns.cpts = _get_cpts(bayes_net_topology=bns_topology, observations=observations)
+    # For convenience sake, store the bayes net variables in topographical ordering:
+    edge_list = []
+    for parent, child_list in bns_topology.items():
+            for child in child_list:
+                edge_list.append([parent, child])
+    # Assign topological ordering to Bayes Network Instance:
+    bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
     # Prompt user for input and answer any queries:
     keyboard_interrupt = False
     while not keyboard_interrupt:
