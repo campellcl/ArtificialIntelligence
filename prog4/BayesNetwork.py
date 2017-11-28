@@ -452,7 +452,7 @@ if __name__ == '__main__':
             print("Enumerate-All %s): %s"
                   % (user_query_verbatim, enumerate_all(variables=bns.bn_vars, e=user_query_vars, bn=bns)))
         else:
-            print("The input query %s is malformed. Expected a query of type {joint,conditional,singular}; in the form"
-                  " P(Query|Evidence)"
+            print("Query Type Identification Error: The provided input query \'%s\' may be malformed.\n"
+                  "\tExpected: a query of type {joint,conditional,singular}.\n\tReceived: a query of type UNKNOWN."
                   % user_query_verbatim)
             exit(-1)
