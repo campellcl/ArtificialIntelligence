@@ -478,27 +478,16 @@ def main():
         exit(-1)
 
 
-def logarithmic_likelihood(model, total_num_models, data):
-    prob_data_given_model = np.NaN
-    for m in range(total_num_models):
-        ''' Compute P(x_i|Model) '''
-        prob_sample_given_model = np.NaN
-        for i in range(len(data)):
-            df_series = data.loc[i]
-            evidence_vars = {}
-            for variable, assignment in df_series.items():
-                evidence_vars[variable] = assignment
-            if np.isnan(prob_sample_given_model):
-                prob_sample_given_model = enumerate_all(variables=model.bn_vars, e=evidence_vars, bn=model)
-            else:
-                prob_sample_given_model *= enumerate_all(variables=model.bn_vars, e=evidence_vars, bn=model)
-        if np.isnan(prob_sample_given_model):
-            prob_data_given_model = np.log(prob_sample_given_model)
-        else:
-            prob_data_given_model += np.log(prob_sample_given_model)
+def logarithmic_likelihood(model, data):
+    ''' Compute P(Data|Model) '''
+    prob_data_given_model = 0
+    for i in range(len(data)):
+        df_series = data.loc[i]
+        evidence_vars = {}
+        for variable, assignment in df_series.items():
+            evidence_vars[variable] = assignment
+            prob_data_given_model += np.log(enumerate_all(variables=model.bn_vars, e=evidence_vars, bn=model))
     return prob_data_given_model
-
-
 
 if __name__ == '__main__':
     bns_topology = None
@@ -526,7 +515,55 @@ if __name__ == '__main__':
     elif user_bns_verbatim == "2":
         bns_topology, observations = import_data(bns_path=bn_two_path, observations_path=observations_two_path)
     elif user_bns_verbatim == "3":
-        bns_topology, observations = import_data(bns_path=model_one_path, observations_path=obs_three_path)
+        # bns_topology, observations = import_data(bns_path=model_one_path, observations_path=obs_three_path)
+        ''' Initialize Model1 (BNS Three to compute Log-Likelihood Against) '''
+        bns_topology_three, obs_three = import_data(bns_path=model_one_path, observations_path=obs_three_path)
+        # Initialize the Bayes Network with the observations data frame and the topology of the network:
+        bns_three = BayesNetwork(bayes_net_topology=bns_topology_three, observations=obs_three)
+        # Instantiate the conditional probability tables associated with the network:
+        bns_three.cpts = _get_cpts(bayes_net_topology=bns_topology_three, observations=obs_three)
+        # For convenience sake, store the bayes net variables in topographical ordering:
+        edge_list = []
+        for parent, child_list in bns_topology_three.items():
+                for child in child_list:
+                    edge_list.append([parent, child])
+        # Assign topological ordering to Bayes Network Instance:
+        bns_three.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+        ''' Initialize Model2 (BNS Four to compute Log-Likelihood Against) '''
+        bns_four, obs_four = import_data(bns_path=model_two_path, observations_path=obs_four_path)
+        bns_topology_four, obs_four = import_data(bns_path=model_two_path, observations_path=obs_four_path)
+        # Initialize the Bayes Network with the observations data frame and the topology of the network:
+        bns_four = BayesNetwork(bayes_net_topology=bns_topology_four, observations=obs_four)
+        # Instantiate the conditional probability tables associated with the network:
+        bns_four.cpts = _get_cpts(bayes_net_topology=bns_topology_four, observations=obs_four)
+        # For convenience sake, store the bayes net variables in topographical ordering:
+        edge_list = []
+        for parent, child_list in bns_topology_four.items():
+                for child in child_list:
+                    edge_list.append([parent, child])
+        # Assign topological ordering to Bayes Network Instance:
+        bns_four.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+        ''' Initialize Model3 (BNS Five to compute Log-Likelihood Against) '''
+        bns_five, obs_five = import_data(bns_path=model_three_path, observations_path=obs_five_path)
+        bns_topology_five, obs_five = import_data(bns_path=model_three_path, observations_path=obs_five_path)
+        # Initialize the Bayes Network with the observations data frame and the topology of the network:
+        bns_five = BayesNetwork(bayes_net_topology=bns_topology_five, observations=obs_five)
+        # Instantiate the conditional probability tables associated with the network:
+        bns_five.cpts = _get_cpts(bayes_net_topology=bns_topology_five, observations=obs_five)
+        # For convenience sake, store the bayes net variables in topographical ordering:
+        edge_list = []
+        for parent, child_list in bns_topology_five.items():
+                for child in child_list:
+                    edge_list.append([parent, child])
+        # Assign topological ordering to Bayes Network Instance:
+        bns_five.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+        ''' Compute Log Likelihoods '''
+        likelihood_m1 = logarithmic_likelihood(model=bns_three, data=obs_three)
+        print("Log-Likelihood P(Data=data3|Model=M1): %.2f" % likelihood_m1)
+        likelihood_m2 = logarithmic_likelihood(model=bns_four, data=obs_three)
+        print("Log-Likelihood P(Data=data3|Model=M2): %.2f" % likelihood_m2)
+        likelihood_m3 = logarithmic_likelihood(model=bns_five, data=obs_three)
+        print("Log-Likelihood P(Data=data3|Model=M3): %.2f" % likelihood_m3)
     elif user_bns_verbatim == "4":
         bns_topology, observations = import_data(bns_path=model_two_path, observations_path=obs_four_path)
     elif user_bns_verbatim == "5":
@@ -534,6 +571,7 @@ if __name__ == '__main__':
     else:
         print("Error: Malformed selection. Expected a BNS Id: {1,2}. User Provided: %s" % user_bns_verbatim)
         exit(-1)
+
     ''' Initialize the Bayesian Network '''
     # Initialize the Bayes Network with the observations data frame and the topology of the network:
     bns = BayesNetwork(bayes_net_topology=bns_topology, observations=observations)
@@ -548,7 +586,7 @@ if __name__ == '__main__':
     bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
     # Compute the log-likelihood of the data given the network:
     print("Computing Log-Likelihood of Data %s given Bayesian Network Topology: %s with Observations: %s")
-    likelihood = logarithmic_likelihood(model=bns, total_num_models=3, data=observations)
+    likelihood = logarithmic_likelihood(model=bns, data=observations)
     print("Log-Likelihood: %.2f" % likelihood)
     # Perform queries on the Bayesian Network:
     main()
