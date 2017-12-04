@@ -76,6 +76,10 @@ class ReflexAgent:
     environment = None
     location = (None, None)
     performance_score = None
+    # at point (3,11) the new desired point is (2,3) Left-Upper Quad
+    right_upper_quad_policy = [(1,8),(0,8),(0,9),(0,10),(0,11),(1,11),(1,10),(1,9),(2,9),(2,10),(2,11),(3,11),(2,3)]
+    left_upper_quad_policy = [(1,3),(0,3),(0,2),(0,1),(0,0),(1,0),(1,1),(1,2),(2,2),(2,1),(2,0),(8,2)]
+    lef_lower_quad_policy = [(8,2),(8,1),(8,0),(9,0),(9,1),(9,2),(10,2),(10,1),(10,0),(11,0),(11,1),(11,2),(8,9)]
 
     def __init__(self, environment, location):
         self.environment = environment
@@ -111,6 +115,9 @@ class ReflexAgent:
             print("Error, agent location not in any quadrant.")
         return quadrant
 
+    def manhattan_distance(self, p_vec, q_vec):
+        return np.sum(np.fabs(np.array(p_vec) - np.array(q_vec)))
+
     def get_policy_for_target_loc(self, loc):
         # Given the agents location and the desire to be at the provided loc, return the optimal move.
         # Get the agents possible moves:
@@ -131,43 +138,78 @@ class ReflexAgent:
             updated_loc = self.location
             updated_loc = (updated_loc[0] + 1, updated_loc[1])
             possible_moves[Actions.MOVE_DOWN] = updated_loc
-        # minimize the distance between x and y.
-        delta_xs = OrderedDict()
-        delta_ys = OrderedDict()
-        arg_max_min_x = None
-        min_x = max('inf')
+        man_dist = OrderedDict()
         for action, new_loc in possible_moves.items():
-            # compute the distance between x and desired coord:
-            delta_x = abs(new_loc[0] - loc[0])
-            delta_xs[action] = delta_x
-            # minimize the distance between y and desired coord:
-            delta_y = abs(new_loc[1] - loc[1])
-            delta_ys[action] = delta_y
-        # Choose the action that minimizes the difference in x and y values:
-        return np.argmin((delta_xs))
+            man_dist[action] = self.manhattan_distance(new_loc, loc)
+        # Return the minimum manhattan distance between the possible locations and the target.
+        return min(man_dist, key=man_dist.get)
 
+    def get_movement_policy(self):
+        """
+        get_movement_policy: Returns the policy (an action in every state) that the agent should follow to maximize rewards.
+            The policy is determined only by the current percepts.
+        :return:
+        """
+        policy = {}
+         # Determine which quadrant the agent is in:
+        agent_quadrant = self.get_agent_quadrant_location()
+        if agent_quadrant == 'Right-Upper':
+            desired_loc = (2,8)
+            # move_policy = [(1,8),(0,8),(0,9),()]
+        elif agent_quadrant == 'Left-Upper':
+            desired_loc = (2,3)
+        elif agent_quadrant == 'Right-Lower':
+            desired_loc = (8,9)
+        else:
+            desired_loc = (8,2)
 
-    def move_direction(self):
+    def move_direction(self, policy=None):
+        """
+        move_direction: Moves along the pre-determined route, follows a policy if provided.
+        :param policy:
+        :return:
+        """
         # Move using the current percepts only.
         desired_move = None
         # Determine which quadrant the agent is in:
         agent_quadrant = self.get_agent_quadrant_location()
         if agent_quadrant == 'Right-Upper':
             desired_loc = (2,8)
-            move_policy = []
-            for i in range(desired_loc[0] - 0):
-                pass
-            move_policy = [(1,8),(0,8),(0,9),()]
+            if self.location == desired_loc:
+                # Follow the right quadrant policy in accordance to table:
+                if len(self.right_upper_quad_policy) != 0:
+                    desired_loc = self.right_upper_quad_policy[0]
+                    self.right_upper_quad_policy = self.right_upper_quad_policy[1:]
+                else:
+                    # Policy end, new policy at left-upper quad.
+                    desired_loc = (2,3)
+                    self.right_upper_quad_policy = None
         elif agent_quadrant == 'Left-Upper':
             desired_loc = (2,3)
-            move_policy = []
-            for i in range(desired_loc[0] - 0):
-                pass
+            if self.location == desired_loc:
+                # Follow left quadrant policy in accordance to table:
+                if len(self.left_upper_quad_policy) != 0:
+                    desired_loc = self.left_upper_quad_policy[0]
+                    self.left_upper_quad_policy = self.left_upper_quad_policy[1:]
+                else:
+                    # Policy end, new policy at lower-left quad.
+                    desired_loc = (8,2)
+                    self.left_upper_quad_policy = None
         elif agent_quadrant == 'Right-Lower':
             desired_loc = (8,9)
-            get_policy_for_target_loc(desired_loc=desired_loc)
         else:
             desired_loc = (8,2)
+            if self.location == desired_loc:
+                # Follow left-lower quad policy:
+                if len(self.left_lower_quad_policy) != 0:
+                    desired_loc = self.lef_lower_quad_policy[0]
+                    self.left_lower_quad_policy = self.left_lower_quad_policy[1:]
+                else:
+                    # Policy end, new policy at lower-right quad.
+                    desired_loc = (8,9)
+                    self.left_lower_quad_policy = None
+        return self.get_policy_for_target_loc(loc=desired_loc)
+        '''
         # Count the number of moveable squares in each direction:
         valid_agent_moves = {Actions.MOVE_UP: 0, Actions.MOVE_RIGHT: 0,
                              Actions.MOVE_DOWN: 0, Actions.MOVE_LEFT: 0}
@@ -199,6 +241,7 @@ class ReflexAgent:
                 most_possible_moves = num_moves
                 desired_move = action
         return desired_move
+        '''
 
     def move_up(self):
         if self.environment.is_valid_action(action=Actions.MOVE_UP, location=self.location):
@@ -358,6 +401,9 @@ def get_random_agent_position(world):
     return i, j
 
 
+
+
+
 def run_simulation(environment, agent, step_count):
     print("Running Simulation with Agent: %s" % type(agent))
     agent.performance_score = 0
@@ -375,6 +421,10 @@ def run_simulation(environment, agent, step_count):
                 direction = Actions(rand_int)
             elif type(agent) is ReflexAgent:
                 # Move in a deliberate direction.
+                # The only available information is the percepts, use this to create a policy and then execute it.
+                policy = {}
+                # policy = {state: action}
+                policy = agent.get_movement_policy()
                 direction = agent.move_direction()
             if direction == Actions.MOVE_LEFT:
                 print("Main-CTRL: The agent is attempting to move LEFT.")
@@ -394,6 +444,7 @@ def run_simulation(environment, agent, step_count):
     print("Main: Simulation finished for step-count: %d. Agent %s's performance: %d." \
           % (step_count, type(agent), agent.performance_score))
     return agent.performance_score
+
 
 def main(environment_type, agent_type, num_repeats, step_count):
     environment = None
