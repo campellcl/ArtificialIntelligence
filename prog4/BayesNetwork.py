@@ -355,6 +355,17 @@ def enumerate_all(variables, e, bn):
                     cpts_query = cpts_query + evidence + ','
                     logical_query.append(1 if assignment is True else 0)
             cpts_query = cpts_query[0:-1]
+            try:
+                prob_Y_is_y = bn.cpts[cpts_query]
+            except KeyError:
+                logical_query = [1 if y is True else 0]
+                cpts_query = Y + '|'
+                reversed_evidence = list(e.items())[::-1]
+                for evidence, assignment in reversed_evidence:
+                    if evidence in parents:
+                        cpts_query = cpts_query + evidence + ','
+                        logical_query.append(1 if assignment is True else 0)
+                cpts_query = cpts_query[0:-1]
         prob_Y_is_y = bn.cpts[cpts_query]
         if len(logical_query) > 1:
             prob_Y_is_y = prob_Y_is_y[tuple(logical_query)]
@@ -371,13 +382,28 @@ def enumerate_all(variables, e, bn):
         cpts_query = Y
         logical_query = [1 if y_i is True else 0]
         parents = get_parents(bn.topology, Y)
+        prob_Y_is_y = None
         if parents:
             cpts_query = cpts_query + '|'
+            # build a cpts query (terms may be out of order due to inconsistent dict ordering during construction).
+            # TODO: Use parents to index e? sort e topologically?
             for evidence, assignment in e.items():
                 if evidence in parents:
                     cpts_query = cpts_query + evidence + ','
                     logical_query.append(1 if assignment is True else 0)
             cpts_query = cpts_query[0:-1]
+            # TODO: Replace this terrible, atrocious code:
+            try:
+                prob_Y_is_y = bn.cpts[cpts_query]
+            except KeyError:
+                logical_query = [1 if y_i is True else 0]
+                cpts_query = Y + '|'
+                reversed_evidence = list(e.items())[::-1]
+                for evidence, assignment in reversed_evidence:
+                    if evidence in parents:
+                        cpts_query = cpts_query + evidence + ','
+                        logical_query.append(1 if assignment is True else 0)
+                cpts_query = cpts_query[0:-1]
         prob_Y_is_y = bn.cpts[cpts_query]
         if len(logical_query) > 1:
             prob_Y_is_y = prob_Y_is_y[tuple(logical_query)]
@@ -515,55 +541,25 @@ if __name__ == '__main__':
     elif user_bns_verbatim == "2":
         bns_topology, observations = import_data(bns_path=bn_two_path, observations_path=observations_two_path)
     elif user_bns_verbatim == "3":
-        # bns_topology, observations = import_data(bns_path=model_one_path, observations_path=obs_three_path)
-        ''' Initialize Model1 (BNS Three to compute Log-Likelihood Against) '''
-        bns_topology_three, obs_three = import_data(bns_path=model_one_path, observations_path=obs_three_path)
-        # Initialize the Bayes Network with the observations data frame and the topology of the network:
-        bns_three = BayesNetwork(bayes_net_topology=bns_topology_three, observations=obs_three)
-        # Instantiate the conditional probability tables associated with the network:
-        bns_three.cpts = _get_cpts(bayes_net_topology=bns_topology_three, observations=obs_three)
-        # For convenience sake, store the bayes net variables in topographical ordering:
-        edge_list = []
-        for parent, child_list in bns_topology_three.items():
-                for child in child_list:
-                    edge_list.append([parent, child])
-        # Assign topological ordering to Bayes Network Instance:
-        bns_three.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
-        ''' Initialize Model2 (BNS Four to compute Log-Likelihood Against) '''
-        bns_four, obs_four = import_data(bns_path=model_two_path, observations_path=obs_four_path)
-        bns_topology_four, obs_four = import_data(bns_path=model_two_path, observations_path=obs_four_path)
-        # Initialize the Bayes Network with the observations data frame and the topology of the network:
-        bns_four = BayesNetwork(bayes_net_topology=bns_topology_four, observations=obs_four)
-        # Instantiate the conditional probability tables associated with the network:
-        bns_four.cpts = _get_cpts(bayes_net_topology=bns_topology_four, observations=obs_four)
-        # For convenience sake, store the bayes net variables in topographical ordering:
-        edge_list = []
-        for parent, child_list in bns_topology_four.items():
-                for child in child_list:
-                    edge_list.append([parent, child])
-        # Assign topological ordering to Bayes Network Instance:
-        bns_four.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
-        ''' Initialize Model3 (BNS Five to compute Log-Likelihood Against) '''
-        bns_five, obs_five = import_data(bns_path=model_three_path, observations_path=obs_five_path)
-        bns_topology_five, obs_five = import_data(bns_path=model_three_path, observations_path=obs_five_path)
-        # Initialize the Bayes Network with the observations data frame and the topology of the network:
-        bns_five = BayesNetwork(bayes_net_topology=bns_topology_five, observations=obs_five)
-        # Instantiate the conditional probability tables associated with the network:
-        bns_five.cpts = _get_cpts(bayes_net_topology=bns_topology_five, observations=obs_five)
-        # For convenience sake, store the bayes net variables in topographical ordering:
-        edge_list = []
-        for parent, child_list in bns_topology_five.items():
-                for child in child_list:
-                    edge_list.append([parent, child])
-        # Assign topological ordering to Bayes Network Instance:
-        bns_five.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
-        ''' Compute Log Likelihoods '''
-        likelihood_m1 = logarithmic_likelihood(model=bns_three, data=obs_three)
-        print("Log-Likelihood P(Data=data3|Model=M1): %.2f" % likelihood_m1)
-        likelihood_m2 = logarithmic_likelihood(model=bns_four, data=obs_three)
-        print("Log-Likelihood P(Data=data3|Model=M2): %.2f" % likelihood_m2)
-        likelihood_m3 = logarithmic_likelihood(model=bns_five, data=obs_three)
-        print("Log-Likelihood P(Data=data3|Model=M3): %.2f" % likelihood_m3)
+        ''' Log Likelihood '''
+        obs_paths = ['data3.csv','data4.csv','data5.csv']
+        models = ['model1.json', 'model2.json', 'model3.json']
+        for i, obs in enumerate(obs_paths):
+            for j, model in enumerate(models):
+                bns_topology, observations = import_data(bns_path=model, observations_path=obs)
+                bns = BayesNetwork(bayes_net_topology=bns_topology, observations=observations)
+                bns.cpts = _get_cpts(bayes_net_topology=bns_topology, observations=observations)
+                # For convenience sake, store the bayes net variables in topographical ordering:
+                edge_list = []
+                for parent, child_list in bns_topology.items():
+                    for child in child_list:
+                        edge_list.append([parent, child])
+                # Assign topological ordering to Bayes Network Instance:
+                bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
+                ''' Compute Log Likelihoods '''
+                log_likelihood = logarithmic_likelihood(model=bns, data=observations)
+                print("Log-Likelihood P(Data=%s|Model=%s): %.2f" % (obs, model, log_likelihood))
+        exit(0)
     elif user_bns_verbatim == "4":
         bns_topology, observations = import_data(bns_path=model_two_path, observations_path=obs_four_path)
     elif user_bns_verbatim == "5":
