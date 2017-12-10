@@ -169,79 +169,21 @@ class ReflexAgent:
         :param policy:
         :return:
         """
-        # Move using the current percepts only.
-        desired_move = None
-        # Determine which quadrant the agent is in:
-        agent_quadrant = self.get_agent_quadrant_location()
-        if agent_quadrant == 'Right-Upper':
-            desired_loc = (2,8)
-            if self.location == desired_loc:
-                # Follow the right quadrant policy in accordance to table:
-                if len(self.right_upper_quad_policy) != 0:
-                    desired_loc = self.right_upper_quad_policy[0]
-                    self.right_upper_quad_policy = self.right_upper_quad_policy[1:]
-                else:
-                    # Policy end, new policy at left-upper quad.
-                    desired_loc = (2,3)
-                    self.right_upper_quad_policy = None
-        elif agent_quadrant == 'Left-Upper':
-            desired_loc = (2,3)
-            if self.location == desired_loc:
-                # Follow left quadrant policy in accordance to table:
-                if len(self.left_upper_quad_policy) != 0:
-                    desired_loc = self.left_upper_quad_policy[0]
-                    self.left_upper_quad_policy = self.left_upper_quad_policy[1:]
-                else:
-                    # Policy end, new policy at lower-left quad.
-                    desired_loc = (8,2)
-                    self.left_upper_quad_policy = None
-        elif agent_quadrant == 'Right-Lower':
-            desired_loc = (8,9)
+        if self.location == (3,3):
+            rand_int = np.random.randint(low=0, high=2)
+            if rand_int == 1:
+                return Actions.MOVE_DOWN
+            else:
+                return Actions.MOVE_RIGHT
+        elif self.location == (3,8):
+            return Actions.MOVE_DOWN
+        elif self.location == (8,3):
+            return Actions.MOVE_UP
+        elif self.location == (8,8):
+            return Actions.MOVE_UP
         else:
-            desired_loc = (8,2)
-            if self.location == desired_loc:
-                # Follow left-lower quad policy:
-                if len(self.left_lower_quad_policy) != 0:
-                    desired_loc = self.lef_lower_quad_policy[0]
-                    self.left_lower_quad_policy = self.left_lower_quad_policy[1:]
-                else:
-                    # Policy end, new policy at lower-right quad.
-                    desired_loc = (8,9)
-                    self.left_lower_quad_policy = None
-        return self.get_policy_for_target_loc(loc=desired_loc)
-        '''
-        # Count the number of moveable squares in each direction:
-        valid_agent_moves = {Actions.MOVE_UP: 0, Actions.MOVE_RIGHT: 0,
-                             Actions.MOVE_DOWN: 0, Actions.MOVE_LEFT: 0}
-
-        initial_location = self.location
-        while self.environment.is_valid_action(action=Actions.MOVE_UP, location=initial_location):
-            valid_agent_moves[Actions.MOVE_UP] += 1
-            initial_location = (initial_location[0] - 1, initial_location[1])
-
-        initial_location = self.location
-        while self.environment.is_valid_action(action=Actions.MOVE_RIGHT, location=initial_location):
-            valid_agent_moves[Actions.MOVE_RIGHT] += 1
-            initial_location = (initial_location[0], initial_location[1] + 1)
-
-        initial_location = self.location
-        while self.environment.is_valid_action(action=Actions.MOVE_LEFT, location=initial_location):
-            valid_agent_moves[Actions.MOVE_LEFT] += 1
-            initial_location = (initial_location[0], initial_location[1] - 1)
-
-        initial_location = self.location
-        while self.environment.is_valid_action(action=Actions.MOVE_DOWN, location=initial_location):
-            valid_agent_moves[Actions.MOVE_DOWN] += 1
-            initial_location = (initial_location[0] + 1, initial_location[1])
-
-        most_possible_moves = 0
-        desired_move = None
-        for action, num_moves in valid_agent_moves.items():
-            if num_moves > most_possible_moves:
-                most_possible_moves = num_moves
-                desired_move = action
-        return desired_move
-        '''
+            rand_int = np.random.randint(low=0, high=4)
+            return Actions(rand_int)
 
     def move_up(self):
         if self.environment.is_valid_action(action=Actions.MOVE_UP, location=self.location):
@@ -474,6 +416,7 @@ def main(environment_type, agent_type, num_repeats, step_count):
         print("Main: Initialized Environment: Vacuum World.")
         if previous_location:
             blind_roomba = BlindAgent(environment=environment, location=seed_location)
+            reflex_roomba = ReflexAgent(environment=deepcopy(environment), location=seed_location)
         else:
             blind_roomba = BlindAgent(environment=environment, location=None)
             reflex_roomba = ReflexAgent(environment=deepcopy(environment), location=blind_roomba.location)
