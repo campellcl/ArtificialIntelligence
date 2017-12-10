@@ -516,73 +516,124 @@ def logarithmic_likelihood(model, data):
     return prob_data_given_model
 
 if __name__ == '__main__':
-    bns_topology = None
-    observations = None
     ''' Perform Initial Setup and Read in Network Topology and Observations '''
     bn_one_path = 'bn1.json'
     observations_one_path = 'data1.csv'
     bn_two_path = 'bn2.json'
     observations_two_path = 'data2.csv'
-    model_one_path = 'model1.json'
-    model_two_path = 'model2.json'
-    model_three_path = 'model3.json'
-    obs_three_path = 'data3.csv'
-    obs_four_path = 'data4.csv'
-    obs_five_path = 'data5.csv'
-    ''' Load Bayesian Network Topology and Empirical Observations '''
+    with open(bn_one_path, 'r') as fp:
+        bayes_net_one_with_spaces = json.load(fp=fp)
+    del(bn_one_path)
+    with open(bn_two_path, 'r') as fp:
+        bayes_net_two_with_spaces = json.load(fp=fp)
+    del(bn_two_path)
+    with open(observations_one_path, 'r') as fp:
+        observations_one = pd.read_csv(fp)
+    del(observations_one_path)
+    with open(observations_two_path, 'r') as fp:
+        observations_two = pd.read_csv(fp)
+    del(observations_two_path)
+    # Strip the spaces from the observations column headers:
+    observations_one.columns = [x.replace(' ', '') for x in observations_one.columns]
+    observations_two.columns = [x.replace(' ', '') for x in observations_two.columns]
+    # Strip spaces from bayes network topology for consistency:
+    bayes_net_topology_one = {}
+    for node, dependencies in bayes_net_one_with_spaces.items():
+        bayes_net_topology_one[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
+    del(bayes_net_one_with_spaces)
+    bayes_net_topology_two = {}
+    for node, dependencies in bayes_net_two_with_spaces.items():
+        bayes_net_topology_two[node.replace(' ', '')] = [dependent.replace(' ', '') for dependent in dependencies]
+    del(bayes_net_two_with_spaces)
+    ''' Initialize the Bayesian Network '''
     user_bns_verbatim = input("Select a Bayesian Network:\n\t"
-                              "[1]: <bn1.json> {HighMileage,GoodEngine,WorkingAirConditioner,HighCarValue}\n\t"
-                              "[2]: <bn2.json> {BadBattery,EmptyFuel,EmptyGauge,NoStart}\n\t"
-                              "[3]: <model1.json> {A,B,C,D,E}\n\t"
-                              "[4]: <model2.json> {A,B,C,D,E}\n\t"
-                              "[5]: <model3.json> {A,B,C,D,E}\n")
+                              "(1): {HighMileage,GoodEngine,WorkingAirConditioner,HighCarValue}\n\t"
+                              "(2): {BadBattery,EmptyFuel,EmptyGauge,NoStart}\n")
     if user_bns_verbatim == "1":
-        bns_topology, observations = import_data(bns_path=bn_one_path, observations_path=observations_one_path)
+        # Initialize the Bayes Network with the observations data frame and the topology of the network:
+        bns = BayesNetwork(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
+        # Instantiate the conditional probability tables associated with the network:
+        bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_one, observations=observations_one)
+        # For convenience sake, store the bayes net variables in topographical ordering:
+        edge_list = []
+        for parent, child_list in bayes_net_topology_one.items():
+            for child in child_list:
+                edge_list.append([parent, child])
+        # Assign topological ordering to Bayes Network Instance:
+        bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
     elif user_bns_verbatim == "2":
-        bns_topology, observations = import_data(bns_path=bn_two_path, observations_path=observations_two_path)
-    elif user_bns_verbatim == "3":
-        ''' Log Likelihood '''
-        obs_paths = ['data3.csv','data4.csv','data5.csv']
-        models = ['model1.json', 'model2.json', 'model3.json']
-        for i, obs in enumerate(obs_paths):
-            for j, model in enumerate(models):
-                bns_topology, observations = import_data(bns_path=model, observations_path=obs)
-                bns = BayesNetwork(bayes_net_topology=bns_topology, observations=observations)
-                bns.cpts = _get_cpts(bayes_net_topology=bns_topology, observations=observations)
-                # For convenience sake, store the bayes net variables in topographical ordering:
-                edge_list = []
-                for parent, child_list in bns_topology.items():
-                    for child in child_list:
-                        edge_list.append([parent, child])
-                # Assign topological ordering to Bayes Network Instance:
-                bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
-                ''' Compute Log Likelihoods '''
-                log_likelihood = logarithmic_likelihood(model=bns, data=observations)
-                print("Log-Likelihood P(Data=%s|Model=%s): %.2f" % (obs, model, log_likelihood))
-        exit(0)
-    elif user_bns_verbatim == "4":
-        bns_topology, observations = import_data(bns_path=model_two_path, observations_path=obs_four_path)
-    elif user_bns_verbatim == "5":
-        bns_topology, observations = import_data(bns_path=model_three_path, observations_path=obs_five_path)
+         # Initialize the Bayes Network with the observations data frame and the topology of the network:
+        bns = BayesNetwork(bayes_net_topology=bayes_net_topology_two, observations=observations_two)
+        # Instantiate the conditional probability tables associated with the network:
+        bns.cpts = _get_cpts(bayes_net_topology=bayes_net_topology_two, observations=observations_two)
+        # For convenience sake, store the bayes net variables in topographical ordering:
+        edge_list = []
+        for parent, child_list in bayes_net_topology_two.items():
+            for child in child_list:
+                edge_list.append([parent, child])
+        # Assign topological ordering to Bayes Network Instance:
+        bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
     else:
         print("Error: Malformed selection. Expected a BNS Id: {1,2}. User Provided: %s" % user_bns_verbatim)
         exit(-1)
-
-    ''' Initialize the Bayesian Network '''
-    # Initialize the Bayes Network with the observations data frame and the topology of the network:
-    bns = BayesNetwork(bayes_net_topology=bns_topology, observations=observations)
-    # Instantiate the conditional probability tables associated with the network:
-    bns.cpts = _get_cpts(bayes_net_topology=bns_topology, observations=observations)
-    # For convenience sake, store the bayes net variables in topographical ordering:
-    edge_list = []
-    for parent, child_list in bns_topology.items():
-            for child in child_list:
-                edge_list.append([parent, child])
-    # Assign topological ordering to Bayes Network Instance:
-    bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
-    # Compute the log-likelihood of the data given the network:
-    # print("Computing Log-Likelihood of Data %s given Bayesian Network Topology: %s with Observations: %s")
-    # likelihood = logarithmic_likelihood(model=bns, data=observations)
-    # print("Log-Likelihood: %.2f" % likelihood)
-    # Perform queries on the Bayesian Network:
-    main()
+    # Prompt user for input and answer any queries:
+    keyboard_interrupt = False
+    while not keyboard_interrupt:
+        user_query_verbatim = input("Enter a Query for the Network of the form P(Query={True,False}|{Evidence}):")
+        # user_query_var = user_query[user_query.index('(')+1:user_query.index('=')]
+        user_query = user_query_verbatim[2:-1]
+        query_type = None
+        # Determine the type of query:
+        if '|' in user_query_verbatim:
+            query_type = 'conditional'
+        else:
+            if user_query_verbatim.count('=') == 1:
+                query_type = 'singular'
+            elif user_query_verbatim.count(',') > 0:
+                query_type = 'joint'
+            else:
+                print('ERROR: Input Query Malformed. Expected {\'P(A=True)\',\'P(A=False)\'}. Recieved: %s'
+                      % user_query_verbatim)
+        # Extract the variables from the query:
+        user_query_vars = {}
+        user_evidence_vars = {}
+        if query_type == 'conditional':
+            query_vars = user_query[0:user_query.find('|')]
+            user_evidence = user_query[user_query.find('|')+1:]
+            user_query_list= query_vars.split(',')
+            user_query_list = [query.split('=') for query in user_query_list]
+            for var in user_query_list:
+                user_query_vars[var[0]] = var[1] == 'True'
+            user_evidence_list = user_evidence.split(',')
+            user_evidence_list = [obs.split('=') for obs in user_evidence_list]
+            for var in user_evidence_list:
+                user_evidence_vars[var[0]] = var[1] == 'True'
+            distribution = enumeration_ask(X=user_query_vars, e=user_evidence_vars, bn=bns)
+            if len(user_query_vars) > 1:
+                print("NotImplementedError")
+            else:
+                x = 1 if list(user_query_vars.values())[0] is True else 0
+                print("Enumeration-Ask %s: %s"
+                      % (user_query_verbatim, distribution[x]))
+        elif query_type == 'joint':
+            # There is no query variable:
+            user_query_vars = None
+            user_evidence_list = user_query.split(',')
+            user_evidence_list = [obs.split('=') for obs in user_evidence_list]
+            for var in user_evidence_list:
+                user_evidence_vars[var[0]] = var[1] == 'True'
+            print("Enumerate-All %s): %s"
+                  % (user_query_verbatim, enumerate_all(variables=bns.bn_vars, e=user_evidence_vars, bn=bns)))
+        elif query_type == 'singular':
+            # There is no evidence variable:
+            user_evidence_vars = None
+            user_query_list = user_query.split('=')
+            user_query_vars[user_query_list[0]] = user_query_list[1] == 'True'
+            # The evidence is the user's query.
+            print("Enumerate-All %s): %s"
+                  % (user_query_verbatim, enumerate_all(variables=bns.bn_vars, e=user_query_vars, bn=bns)))
+        else:
+            print("Query Type Identification Error: The provided input query \'%s\' may be malformed.\n"
+                  "\tExpected: a query of type {joint,conditional,singular}.\n\tReceived: a query of type UNKNOWN."
+                  % user_query_verbatim)
+            exit(-1)

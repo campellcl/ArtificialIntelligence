@@ -1,0 +1,476 @@
+98
+a1 -3
+a2 -3
+a3 -3
+a4 -3
+a5 -3
+a6 -3
+a7 -3
+a8 -3
+a9 -3
+a10 100
+b1 -3
+b2 -3
+b3 -3
+b4 -3
+b5 -3
+b6 -3
+b7 -3
+b8 -3
+b9 -3
+b10 -3
+c1 -3
+c2 -3
+c3 -3
+c4 -3
+c5 -3
+c6 -3
+c7 -3
+c8 -3
+c9 -3
+c10 -3
+d1 -3
+d3 -3
+d4 -3
+d5 -3
+d6 -3
+d7 -3
+d8 -3
+d9 -3
+d10 -3
+e1 -3
+e2 -3
+e3 -3
+e4 -3
+e5 -3
+e6 -3
+e7 -3
+e9 -3
+e10 -3
+f1 -100
+f2 -3
+f3 -3
+f4 -3
+f5 -3
+f6 -3
+f7 -3
+f8 -3
+f9 -3
+f10 -3
+g1 -3
+g2 -3
+g3 -100
+g4 -3
+g5 -3
+g6 -3
+g7 -3
+g8 -3
+g9 -3
+g10 -3
+h1 -3
+h2 -3
+h3 -3
+h4 -3
+h5 -3
+h6 -3
+h7 -100
+h8 -3
+h9 -3
+h10 -3
+i1 -100
+i2 -3
+i3 -100
+i4 -3
+i5 -3
+i6 -3
+i7 -3
+i8 -3
+i9 -3
+i10 -3
+j1 -3
+j2 -3
+j3 -3
+j4 -3
+j5 -3
+j6 -3
+j7 -3
+j8 -3
+j9 -3
+j10 -3
+a10 h7 i1 g3 f1 i3
+4
+N 0.6262115436959252 0.18689422815203738 0 0.18689422815203738
+E 0.18689422815203738 0.6262115436959252 0.18689422815203738 0
+S 0 0.18689422815203738 0.6262115436959252 0.18689422815203738
+W 0.18689422815203738 0 0.18689422815203738 0.6262115436959252
+368
+a1 N a1
+a1 E a2
+a1 S b1
+a1 W a1
+a2 N a2
+a2 E a3
+a2 S b2
+a2 W a1
+a3 N a3
+a3 E a4
+a3 S b3
+a3 W a2
+a4 N a4
+a4 E a5
+a4 S b4
+a4 W a3
+a5 N a5
+a5 E a6
+a5 S b5
+a5 W a4
+a6 N a6
+a6 E a7
+a6 S b6
+a6 W a5
+a7 N a7
+a7 E a8
+a7 S b7
+a7 W a6
+a8 N a8
+a8 E a9
+a8 S b8
+a8 W a7
+a9 N a9
+a9 E a10
+a9 S b9
+a9 W a8
+b1 N a1
+b1 E b2
+b1 S c1
+b1 W b1
+b2 N a2
+b2 E b3
+b2 S c2
+b2 W b1
+b3 N a3
+b3 E b4
+b3 S c3
+b3 W b2
+b4 N a4
+b4 E b5
+b4 S c4
+b4 W b3
+b5 N a5
+b5 E b6
+b5 S c5
+b5 W b4
+b6 N a6
+b6 E b7
+b6 S c6
+b6 W b5
+b7 N a7
+b7 E b8
+b7 S c7
+b7 W b6
+b8 N a8
+b8 E b9
+b8 S c8
+b8 W b7
+b9 N a9
+b9 E b10
+b9 S c9
+b9 W b8
+b10 N a10
+b10 E b10
+b10 S c10
+b10 W b9
+c1 N b1
+c1 E c2
+c1 S d1
+c1 W c1
+c2 N b2
+c2 E c3
+c2 S f8
+c2 W c1
+c3 N b3
+c3 E c4
+c3 S d3
+c3 W c2
+c4 N b4
+c4 E c5
+c4 S d4
+c4 W c3
+c5 N b5
+c5 E c6
+c5 S d5
+c5 W c4
+c6 N b6
+c6 E c7
+c6 S d6
+c6 W c5
+c7 N b7
+c7 E c8
+c7 S d7
+c7 W c6
+c8 N b8
+c8 E c9
+c8 S d8
+c8 W c7
+c9 N b9
+c9 E c10
+c9 S d9
+c9 W c8
+c10 N b10
+c10 E c10
+c10 S d10
+c10 W c9
+d1 N c1
+d1 E e9
+d1 S e1
+d1 W d1
+d3 N c3
+d3 E d4
+d3 S e3
+d3 W e7
+d4 N c4
+d4 E d5
+d4 S e4
+d4 W d3
+d5 N c5
+d5 E d6
+d5 S e5
+d5 W d4
+d6 N c6
+d6 E d7
+d6 S e6
+d6 W d5
+d7 N c7
+d7 E d8
+d7 S e7
+d7 W d6
+d8 N c8
+d8 E d9
+d8 S e2
+d8 W d7
+d9 N c9
+d9 E d10
+d9 S e9
+d9 W d8
+d10 N c10
+d10 E d10
+d10 S e10
+d10 W d9
+e1 N d1
+e1 E e2
+e1 S f1
+e1 W e1
+e2 N d8
+e2 E e3
+e2 S f2
+e2 W e1
+e3 N d3
+e3 E e4
+e3 S f3
+e3 W e2
+e4 N d4
+e4 E e5
+e4 S f4
+e4 W e3
+e5 N d5
+e5 E e6
+e5 S f5
+e5 W e4
+e6 N d6
+e6 E e7
+e6 S f6
+e6 W e5
+e7 N d7
+e7 E d3
+e7 S f7
+e7 W e6
+e9 N d9
+e9 E e10
+e9 S f9
+e9 W d1
+e10 N d10
+e10 E e10
+e10 S f10
+e10 W e9
+f2 N e2
+f2 E f3
+f2 S g2
+f2 W f1
+f3 N e3
+f3 E f4
+f3 S g3
+f3 W f2
+f4 N e4
+f4 E f5
+f4 S g4
+f4 W f3
+f5 N e5
+f5 E f6
+f5 S g5
+f5 W f4
+f6 N e6
+f6 E f7
+f6 S g6
+f6 W f5
+f7 N e7
+f7 E f8
+f7 S g7
+f7 W f6
+f8 N c2
+f8 E f9
+f8 S g8
+f8 W f7
+f9 N e9
+f9 E f10
+f9 S g9
+f9 W f8
+f10 N e10
+f10 E f10
+f10 S g10
+f10 W f9
+g1 N f1
+g1 E g2
+g1 S h1
+g1 W g1
+g2 N f2
+g2 E g3
+g2 S h2
+g2 W g1
+g4 N f4
+g4 E g5
+g4 S h4
+g4 W g3
+g5 N f5
+g5 E g6
+g5 S h5
+g5 W g4
+g6 N f6
+g6 E g7
+g6 S h6
+g6 W g5
+g7 N f7
+g7 E g8
+g7 S h7
+g7 W g6
+g8 N f8
+g8 E g9
+g8 S h8
+g8 W g7
+g9 N f9
+g9 E g10
+g9 S h9
+g9 W g8
+g10 N f10
+g10 E g10
+g10 S h10
+g10 W g9
+h1 N g1
+h1 E h2
+h1 S i1
+h1 W h1
+h2 N g2
+h2 E h3
+h2 S i2
+h2 W h1
+h3 N g3
+h3 E h4
+h3 S i3
+h3 W h2
+h4 N g4
+h4 E h5
+h4 S i4
+h4 W h3
+h5 N g5
+h5 E h6
+h5 S i5
+h5 W h4
+h6 N g6
+h6 E h7
+h6 S i6
+h6 W h5
+h8 N g8
+h8 E h9
+h8 S i8
+h8 W h7
+h9 N g9
+h9 E h10
+h9 S i9
+h9 W h8
+h10 N g10
+h10 E h10
+h10 S i10
+h10 W h9
+i2 N h2
+i2 E i3
+i2 S j2
+i2 W i1
+i4 N h4
+i4 E i5
+i4 S j4
+i4 W i3
+i5 N h5
+i5 E i6
+i5 S j5
+i5 W i4
+i6 N h6
+i6 E i7
+i6 S j6
+i6 W i5
+i7 N h7
+i7 E i8
+i7 S j7
+i7 W i6
+i8 N h8
+i8 E i9
+i8 S j8
+i8 W i7
+i9 N h9
+i9 E i10
+i9 S j9
+i9 W i8
+i10 N h10
+i10 E i10
+i10 S j10
+i10 W i9
+j1 N i1
+j1 E j2
+j1 S j1
+j1 W j1
+j2 N i2
+j2 E j3
+j2 S j2
+j2 W j1
+j3 N i3
+j3 E j4
+j3 S j3
+j3 W j2
+j4 N i4
+j4 E j5
+j4 S j4
+j4 W j3
+j5 N i5
+j5 E j6
+j5 S j5
+j5 W j4
+j6 N i6
+j6 E j7
+j6 S j6
+j6 W j5
+j7 N i7
+j7 E j8
+j7 S j7
+j7 W j6
+j8 N i8
+j8 E j9
+j8 S j8
+j8 W j7
+j9 N i9
+j9 E j10
+j9 S j9
+j9 W j8
+j10 N i10
+j10 E j10
+j10 S j10
+j10 W j9
+1.000000
+j1

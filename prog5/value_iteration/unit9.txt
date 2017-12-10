@@ -1,0 +1,54 @@
+12
+a1 -3
+a2 -3
+a3 -3
+a4 100
+b1 -100
+b3 -100
+b2 -100
+b4 -3
+c1 -3
+c2 -3
+c3 -3
+c4 -3
+a4 b1 b2 b3
+4
+N 0.8 0.1 0.0 0.1
+E 0.1 0.8 0.1 0.0
+S 0.0 0.1 0.8 0.1
+W 0.1 0.0 0.1 0.8
+32
+a1 N a1
+a1 E a2
+a1 S b1
+a1 W a1
+a2 N a2
+a2 E a3
+a2 S b2
+a2 W a1
+a3 N a3
+a3 E a4
+a3 S b3
+a3 W a2
+b4 N a4
+b4 E b4
+b4 S c4
+b4 W b3
+c1 N b1
+c1 E c2
+c1 S c1
+c1 W c1
+c2 N b2
+c2 E c3
+c2 S c2
+c2 W c1
+c3 N b3
+c3 E c4
+c3 S c3
+c3 W c2
+c4 N b4
+c4 E c4
+c4 S c4
+c4 W c3
+1.0
+c1
