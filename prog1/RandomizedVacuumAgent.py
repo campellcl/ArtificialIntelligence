@@ -6,6 +6,7 @@ Generates environments for the vacuum agent world.
 import numpy as np
 from copy import deepcopy
 from enum import Enum
+from collections import OrderedDict
 
 __author__ = "Chris Campell"
 __version__ = "9/3/2017"
@@ -75,45 +76,114 @@ class ReflexAgent:
     environment = None
     location = (None, None)
     performance_score = None
+    # at point (3,11) the new desired point is (2,3) Left-Upper Quad
+    right_upper_quad_policy = [(1,8),(0,8),(0,9),(0,10),(0,11),(1,11),(1,10),(1,9),(2,9),(2,10),(2,11),(3,11),(2,3)]
+    left_upper_quad_policy = [(1,3),(0,3),(0,2),(0,1),(0,0),(1,0),(1,1),(1,2),(2,2),(2,1),(2,0),(8,2)]
+    lef_lower_quad_policy = [(8,2),(8,1),(8,0),(9,0),(9,1),(9,2),(10,2),(10,1),(10,0),(11,0),(11,1),(11,2),(8,9)]
 
     def __init__(self, environment, location):
         self.environment = environment
         self.location = location
         self.performance_score = 0
 
-    def move_direction(self):
-        # Move using the current percepts only.
-        # Count the number of moveable squares in each direction:
-        valid_agent_moves = {Actions.MOVE_UP: 0, Actions.MOVE_RIGHT: 0,
-                             Actions.MOVE_DOWN: 0, Actions.MOVE_LEFT: 0}
+    def get_agent_quadrant_location(self):
+        quadrant = None
+        # Get which quadrant the agent is in:
+        if self.location[0] < 12 and self.location[0] > 7:
+            # The agent is in the bottom half of the map.
+            if self.location[1] < 4 and self.location[1] >=0:
+                # The agent is in the left-lower quadrant:
+                quadrant = 'Left-Lower'
+            elif self.location[1] < 12 and self.location[1] > 7:
+                # The agent is in the right-lower quadrant:
+                quadrant = 'Right-Lower'
+            else:
+                # The agent is not in a quadrant, but is in lower half of map.
+                quadrant = 'NA-Lower'
+        elif self.location[0] < 4 and self.location[0] >= 0:
+            # The agent is in the upper half of the map.
+            if self.location[1] < 4 and self.location[1] >=0:
+                # The agent is in the left-upper quadrant:
+                quadrant = 'Left-Upper'
+            elif self.location[1] < 12 and self.location[1] > 7:
+                # The agent is in the right-upper quadrant:
+                quadrant = 'Right-Upper'
+            else:
+                # Not in a quadrant, is in upper half of map.
+                quadrant = 'NA-Upper'
+        else:
+            print("Error, agent location not in any quadrant.")
+        return quadrant
 
-        initial_location = self.location
-        while self.environment.is_valid_action(action=Actions.MOVE_UP, location=initial_location):
-            valid_agent_moves[Actions.MOVE_UP] += 1
-            initial_location = (initial_location[0] - 1, initial_location[1])
+    def manhattan_distance(self, p_vec, q_vec):
+        return np.sum(np.fabs(np.array(p_vec) - np.array(q_vec)))
 
-        initial_location = self.location
-        while self.environment.is_valid_action(action=Actions.MOVE_RIGHT, location=initial_location):
-            valid_agent_moves[Actions.MOVE_RIGHT] += 1
-            initial_location = (initial_location[0], initial_location[1] + 1)
+    def get_policy_for_target_loc(self, loc):
+        # Given the agents location and the desire to be at the provided loc, return the optimal move.
+        # Get the agents possible moves:
+        possible_moves = OrderedDict()
+        if self.environment.is_valid_action(action=Actions.MOVE_UP, location=self.location):
+            updated_loc = self.location
+            updated_loc = (updated_loc[0] - 1, updated_loc[1])
+            possible_moves[Actions.MOVE_UP] = updated_loc
+        if self.environment.is_valid_action(action=Actions.MOVE_RIGHT, location=self.location):
+            updated_loc = self.location
+            updated_loc = (updated_loc[0], updated_loc[1] + 1)
+            possible_moves[Actions.MOVE_RIGHT] = updated_loc
+        if self.environment.is_valid_action(action=Actions.MOVE_LEFT, location=self.location):
+            updated_loc = self.location
+            updated_loc = (updated_loc[0], updated_loc[1] - 1)
+            possible_moves[Actions.MOVE_LEFT] = updated_loc
+        if self.environment.is_valid_action(action=Actions.MOVE_DOWN, location=self.location):
+            updated_loc = self.location
+            updated_loc = (updated_loc[0] + 1, updated_loc[1])
+            possible_moves[Actions.MOVE_DOWN] = updated_loc
+        man_dist = OrderedDict()
+        for action, new_loc in possible_moves.items():
+            man_dist[action] = self.manhattan_distance(new_loc, loc)
+        # Return the minimum manhattan distance between the possible locations and the target.
+        return min(man_dist, key=man_dist.get)
 
-        initial_location = self.location
-        while self.environment.is_valid_action(action=Actions.MOVE_LEFT, location=initial_location):
-            valid_agent_moves[Actions.MOVE_LEFT] += 1
-            initial_location = (initial_location[0], initial_location[1] - 1)
+    def get_movement_policy(self):
+        """
+        get_movement_policy: Returns the policy (an action in every state) that the agent should follow to maximize rewards.
+            The policy is determined only by the current percepts.
+        :return:
+        """
+        policy = {}
+         # Determine which quadrant the agent is in:
+        agent_quadrant = self.get_agent_quadrant_location()
+        if agent_quadrant == 'Right-Upper':
+            desired_loc = (2,8)
+            # move_policy = [(1,8),(0,8),(0,9),()]
+        elif agent_quadrant == 'Left-Upper':
+            desired_loc = (2,3)
+        elif agent_quadrant == 'Right-Lower':
+            desired_loc = (8,9)
+        else:
+            desired_loc = (8,2)
 
-        initial_location = self.location
-        while self.environment.is_valid_action(action=Actions.MOVE_DOWN, location=initial_location):
-            valid_agent_moves[Actions.MOVE_DOWN] += 1
-            initial_location = (initial_location[0] + 1, initial_location[1])
-
-        most_possible_moves = 0
-        desired_move = None
-        for action, num_moves in valid_agent_moves.items():
-            if num_moves > most_possible_moves:
-                most_possible_moves = num_moves
-                desired_move = action
-        return desired_move
+    def move_direction(self, policy=None):
+        """
+        move_direction: Moves along the pre-determined route, follows a policy if provided.
+        :param policy:
+        :return:
+        """
+        if self.location == (3,3):
+            rand_int = np.random.randint(low=0, high=2)
+            if rand_int == 1:
+                return Actions.MOVE_DOWN
+            else:
+                return Actions.MOVE_RIGHT
+        elif self.location == (3,8):
+            return Actions.MOVE_DOWN
+        elif self.location == (8,3):
+            return Actions.MOVE_UP
+        elif self.location == (8,8):
+            return Actions.MOVE_UP
+        else:
+            rand_int = np.random.randint(low=0, high=4)
+            return Actions(rand_int)
 
     def move_up(self):
         if self.environment.is_valid_action(action=Actions.MOVE_UP, location=self.location):
@@ -273,6 +343,9 @@ def get_random_agent_position(world):
     return i, j
 
 
+
+
+
 def run_simulation(environment, agent, step_count):
     print("Running Simulation with Agent: %s" % type(agent))
     agent.performance_score = 0
@@ -290,6 +363,10 @@ def run_simulation(environment, agent, step_count):
                 direction = Actions(rand_int)
             elif type(agent) is ReflexAgent:
                 # Move in a deliberate direction.
+                # The only available information is the percepts, use this to create a policy and then execute it.
+                policy = {}
+                # policy = {state: action}
+                policy = agent.get_movement_policy()
                 direction = agent.move_direction()
             if direction == Actions.MOVE_LEFT:
                 print("Main-CTRL: The agent is attempting to move LEFT.")
@@ -309,6 +386,7 @@ def run_simulation(environment, agent, step_count):
     print("Main: Simulation finished for step-count: %d. Agent %s's performance: %d." \
           % (step_count, type(agent), agent.performance_score))
     return agent.performance_score
+
 
 def main(environment_type, agent_type, num_repeats, step_count):
     environment = None
@@ -338,6 +416,7 @@ def main(environment_type, agent_type, num_repeats, step_count):
         print("Main: Initialized Environment: Vacuum World.")
         if previous_location:
             blind_roomba = BlindAgent(environment=environment, location=seed_location)
+            reflex_roomba = ReflexAgent(environment=deepcopy(environment), location=seed_location)
         else:
             blind_roomba = BlindAgent(environment=environment, location=None)
             reflex_roomba = ReflexAgent(environment=deepcopy(environment), location=blind_roomba.location)
