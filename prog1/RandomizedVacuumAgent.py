@@ -176,7 +176,11 @@ class ReflexAgent:
             else:
                 return Actions.MOVE_RIGHT
         elif self.location == (3,8):
-            return Actions.MOVE_DOWN
+            rand_int = np.random.randint(low=0, high=2)
+            if rand_int == 1:
+                return Actions.MOVE_DOWN
+            else:
+                return Actions.MOVE_LEFT
         elif self.location == (8,3):
             return Actions.MOVE_UP
         elif self.location == (8,8):
