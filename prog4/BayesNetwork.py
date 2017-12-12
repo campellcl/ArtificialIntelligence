@@ -530,18 +530,23 @@ if __name__ == '__main__':
     obs_four_path = 'data4.csv'
     obs_five_path = 'data5.csv'
     ''' Load Bayesian Network Topology and Empirical Observations '''
-    user_bns_verbatim = input("Select a Bayesian Network:\n\t"
+    user_option_verbatim = input("Select an Option:\n\t"
+                                 "[1] Query the Bayesian Network.\n\t"
+                                 "[2] Compute the Log-Likelihood for model-data pairs.\n")
+    if user_option_verbatim == "1":
+        user_bns_verbatim = input("Select a Bayesian Network to Query:\n\t"
                               "[1]: <bn1.json> {HighMileage,GoodEngine,WorkingAirConditioner,HighCarValue}\n\t"
-                              "[2]: <bn2.json> {BadBattery,EmptyFuel,EmptyGauge,NoStart}\n\t"
-                              "[3]: <model1.json> {A,B,C,D,E}\n\t"
-                              "[4]: <model2.json> {A,B,C,D,E}\n\t"
-                              "[5]: <model3.json> {A,B,C,D,E}\n")
-    if user_bns_verbatim == "1":
-        bns_topology, observations = import_data(bns_path=bn_one_path, observations_path=observations_one_path)
-    elif user_bns_verbatim == "2":
-        bns_topology, observations = import_data(bns_path=bn_two_path, observations_path=observations_two_path)
-    elif user_bns_verbatim == "3":
-        ''' Log Likelihood '''
+                              "[2]: <bn2.json> {BadBattery,EmptyFuel,EmptyGauge,NoStart}\n")
+        if user_bns_verbatim == "1":
+            bns_topology, observations = import_data(bns_path=bn_one_path, observations_path=observations_one_path)
+        elif user_bns_verbatim == "2":
+            bns_topology, observations = import_data(bns_path=bn_two_path, observations_path=observations_two_path)
+        else:
+            print("Error: Malformed selection. Expected a BNS Id: {1,2}. User Provided: %s" % user_bns_verbatim)
+            exit(-1)
+    elif user_option_verbatim == "2":
+        print("Now calculating the Log-Likelihood for each Model-Data pair, please stand by...")
+        ''' Log-Likelihood'''
         obs_paths = ['data3.csv','data4.csv','data5.csv']
         models = ['model1.json', 'model2.json', 'model3.json']
         for i, obs in enumerate(obs_paths):
@@ -560,14 +565,9 @@ if __name__ == '__main__':
                 log_likelihood = logarithmic_likelihood(model=bns, data=observations)
                 print("Log-Likelihood P(Data=%s|Model=%s): %.2f" % (obs, model, log_likelihood))
         exit(0)
-    elif user_bns_verbatim == "4":
-        bns_topology, observations = import_data(bns_path=model_two_path, observations_path=obs_four_path)
-    elif user_bns_verbatim == "5":
-        bns_topology, observations = import_data(bns_path=model_three_path, observations_path=obs_five_path)
     else:
-        print("Error: Malformed selection. Expected a BNS Id: {1,2}. User Provided: %s" % user_bns_verbatim)
+        print("Error: Malformed selection. Expected an integer: {1,2}. User Provided: %s" % user_option_verbatim)
         exit(-1)
-
     ''' Initialize the Bayesian Network '''
     # Initialize the Bayes Network with the observations data frame and the topology of the network:
     bns = BayesNetwork(bayes_net_topology=bns_topology, observations=observations)
@@ -580,9 +580,5 @@ if __name__ == '__main__':
                 edge_list.append([parent, child])
     # Assign topological ordering to Bayes Network Instance:
     bns.bn_vars = sort_direct_acyclic_graph(edge_list=edge_list)
-    # Compute the log-likelihood of the data given the network:
-    print("Computing Log-Likelihood of Data %s given Bayesian Network Topology: %s with Observations: %s")
-    likelihood = logarithmic_likelihood(model=bns, data=observations)
-    print("Log-Likelihood: %.2f" % likelihood)
     # Perform queries on the Bayesian Network:
     main()
